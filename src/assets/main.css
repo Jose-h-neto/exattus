@@ -1,0 +1,132 @@
+/*
+ * Design system Exattus.
+ * tokens.css (gerado de tokens.json: node scripts/gerar-tokens.mjs) define as
+ * variaveis dos temas claro e escuro; bundle.css traz as classes ex-* dos
+ * componentes e as fontes Manrope e JetBrains Mono.
+ */
+@import "./exattus/tokens.css";
+@import "./exattus/bundle.css";
+@import "./vidro.css";
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * Utilitarios do Tailwind ligados aos tokens semanticos. `inline` faz cada
+ * classe ler a variavel em tempo de execucao, entao o tema escuro troca tudo.
+ * Nomes legados (canvas, subtle, ink-2, muted, positive, negative) seguem
+ * apontando para os tokens equivalentes.
+ */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-canvas: var(--bg);
+  --color-surface: var(--surface);
+  --color-subtle: var(--surface-sunken);
+  --color-sunken: var(--surface-sunken);
+  --color-hover: var(--surface-hover);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink);
+  --color-muted: var(--ink-muted);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-subtle: var(--ink-subtle);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-soft: var(--primary-soft);
+  --color-on-primary: var(--on-primary);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+
+  --color-positive: var(--success);
+  --color-positive-soft: var(--success-soft);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-negative: var(--danger);
+  --color-negative-soft: var(--danger-soft);
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-danger-soft: var(--danger-soft);
+  --color-on-danger: var(--on-danger);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-scrim: var(--scrim);
+
+  --shadow-xl: var(--shadow-lg);
+}
+
+/*
+ * --font-sans, --font-mono, --radius-xs..xl e --shadow-xs/md/lg tem o mesmo nome
+ * no Tailwind e no design system: tokens.css (fora de camada) prevalece sobre o
+ * tema padrao, entao rounded-md = 10px, rounded-lg = 16px, font-sans = Manrope.
+ */
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-bg text-ink font-sans;
+    font-size: 14px;
+    line-height: 22px;
+  }
+
+  ::selection {
+    @apply bg-primary-soft;
+  }
+}
+
+@layer components {
+  /* Tabela de dados e memorias de calculo (padrao ex-table do design system). */
+  .tabela {
+    @apply w-full border-collapse text-sm text-ink;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tabela th {
+    @apply bg-sunken/55 px-4 py-2.5 text-left text-xs font-semibold whitespace-nowrap text-ink-muted;
+  }
+
+  .tabela td {
+    @apply border-t border-line px-4 py-3 align-top text-ink;
+  }
+
+  .tabela tbody tr:hover > td {
+    @apply bg-hover/60;
+  }
+
+  .tabela .num {
+    @apply text-right whitespace-nowrap tabular-nums;
+  }
+
+  .tabela tfoot th,
+  .tabela tfoot td {
+    @apply border-t border-line-strong bg-transparent py-3 text-sm font-bold text-ink;
+  }
+}
+
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility focus-ring {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/*
+ * Textos so para leitores de tela (posicao absoluta) ancorados a esquerda: sem
+ * isso, dentro de tabelas com rolagem horizontal eles escapam do recorte e
+ * criam rolagem lateral na pagina.
+ */
+.ex-sr,
+.sr-only {
+  left: 0;
+}

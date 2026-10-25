@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sed -i -e 's/'\\\\''Deducoes legais'\\\\''/'\\\\''Deduções legais'\\\\''/' -e 's/`Ate \\\\${/`Até ${/' irrf.ts)",
+      "Bash(sed -i -e 's/O limite da faixa ${indice + 1} deve ser maior que o da faixa anterior./O limite da faixa ${indice + 1} deve ser maior que o da faixa anterior./' -e 's/A aliquota da faixa ${indice + 1} nao pode passar de 100%./A alíquota da faixa ${indice + 1} não pode passar de 100%./' -e 's/'\\\\''A aliquota do pro-labore nao pode passar de 100%.'\\\\''/'\\\\''A alíquota do pró-labore não pode passar de 100%.'\\\\''/' inss.ts)",
+      "Bash(sed -i -e 's/'\\\\''Receita Federal - Tributacao de 2026'\\\\''/'\\\\''Receita Federal — Tributação de 2026'\\\\''/' -e 's/'\\\\''Receita Federal - Exemplos da Lei n. 15.270\\\\/2025'\\\\''/'\\\\''Receita Federal — Exemplos da Lei nº 15.270\\\\/2025'\\\\''/' -e 's/'\\\\''INSS - Tabela de contribuicao mensal'\\\\''/'\\\\''INSS — Tabela de contribuição mensal'\\\\''/' parametros.ts)",
+      "Bash(sed -i \"s/'Nao foi possivel ratear um valor sem uma base positiva.'/'Não foi possível ratear um valor sem uma base positiva.'/\" ferias.ts)",
+      "Bash(npm run *)",
+      "Bash(mkdir -p C:/Users/joseh/AppData/Local/Temp/claude/c--Exattus-exattus/0dd2a4b8-3eef-4a52-be41-c090dbe38e94/scratchpad/teste/domain)",
+      "Bash(cp /c/Exattus/exattus/src/domain/*.ts C:/Users/joseh/AppData/Local/Temp/claude/c--Exattus-exattus/0dd2a4b8-3eef-4a52-be41-c090dbe38e94/scratchpad/teste/domain/)",
+      "Bash(sed -i -E \"s#from '\\(\\\\./[a-z]+\\)'#from '\\\\1.ts'#\" *.ts)",
+      "Bash(node C:/Users/joseh/AppData/Local/Temp/claude/c--Exattus-exattus/0dd2a4b8-3eef-4a52-be41-c090dbe38e94/scratchpad/teste/comparar.ts C:/Users/joseh/AppData/Local/Temp/claude/c--Exattus-exattus/0dd2a4b8-3eef-4a52-be41-c090dbe38e94/scratchpad/sisteminhas)",
+      "Bash(ls \"/c/Program Files \\(x86\\)/Microsoft/Edge/Application/msedge.exe\" \"/c/Program Files/Google/Chrome/Application/chrome.exe\" 2>&1)",
+      "Read(//c/Program Files \\\\\\(x86\\\\\\)/Microsoft/Edge/Application/**)",
+      "Bash(npx vite *)"
+    ]
+  }
+}

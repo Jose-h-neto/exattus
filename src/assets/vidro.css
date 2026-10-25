@@ -1,0 +1,129 @@
+/*
+ * Fundo em degrade e efeito "liquid glass" do Exattus.
+ *
+ * Cores tiradas da paleta do design system: violet-200/400/600/800, orchid,
+ * sky e o slate de chart-4. O vidro e translucido com desfoque e saturacao
+ * do que esta atras, contorno fino, brilho especular no topo e sombra suave.
+ * Opacidade calibrada para manter o texto em 4,5:1 nos dois temas.
+ */
+
+:root {
+  --fundo-app:
+    radial-gradient(44rem 34rem at 6% -8%, rgb(166 143 247 / 0.55), transparent 70%),
+    radial-gradient(38rem 30rem at 102% 2%, rgb(195 142 180 / 0.45), transparent 70%),
+    radial-gradient(46rem 38rem at 84% 104%, rgb(134 168 207 / 0.5), transparent 70%),
+    radial-gradient(36rem 30rem at 34% 72%, rgb(220 211 251 / 0.75), transparent 70%),
+    linear-gradient(160deg, #f5f2fe 0%, #f5f4fa 45%, #eef1f8 100%);
+
+  --vidro-fundo: linear-gradient(140deg, rgb(255 255 255 / 0.78), rgb(255 255 255 / 0.58));
+  --vidro-fundo-forte: linear-gradient(140deg, rgb(255 255 255 / 0.92), rgb(255 255 255 / 0.8));
+  --vidro-fundo-leve: linear-gradient(160deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.56));
+  --vidro-especular: radial-gradient(120% 70% at 0% 0%, rgb(255 255 255 / 0.65), transparent 55%);
+  --vidro-contorno: rgb(90 63 192 / 0.12);
+  --vidro-brilho: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 -1px 0 rgb(255 255 255 / 0.3);
+  --vidro-sombra: 0 1px 2px rgb(42 35 80 / 0.04), 0 14px 36px -18px rgb(42 35 80 / 0.24);
+  --vidro-sombra-flutuante: 0 2px 6px rgb(42 35 80 / 0.06), 0 24px 56px -20px rgb(42 35 80 / 0.34);
+  --vidro-desfoque: blur(22px) saturate(170%);
+}
+
+[data-theme="dark"] {
+  --fundo-app:
+    radial-gradient(44rem 34rem at 6% -8%, rgb(90 63 192 / 0.45), transparent 70%),
+    radial-gradient(38rem 30rem at 102% 2%, rgb(195 142 180 / 0.2), transparent 70%),
+    radial-gradient(46rem 38rem at 84% 104%, rgb(134 168 207 / 0.18), transparent 70%),
+    radial-gradient(36rem 30rem at 34% 72%, rgb(54 37 122 / 0.36), transparent 70%),
+    linear-gradient(160deg, #120f22 0%, #0e0d17 50%, #0c1019 100%);
+
+  --vidro-fundo: linear-gradient(140deg, rgb(33 31 52 / 0.74), rgb(23 22 36 / 0.58));
+  --vidro-fundo-forte: linear-gradient(140deg, rgb(33 31 52 / 0.9), rgb(23 22 36 / 0.82));
+  --vidro-fundo-leve: linear-gradient(160deg, rgb(33 31 52 / 0.6), rgb(23 22 36 / 0.42));
+  --vidro-especular: radial-gradient(120% 70% at 0% 0%, rgb(255 255 255 / 0.07), transparent 55%);
+  --vidro-contorno: rgb(255 255 255 / 0.09);
+  --vidro-brilho: inset 0 1px 0 rgb(255 255 255 / 0.08), inset 0 -1px 0 rgb(0 0 0 / 0.25);
+  --vidro-sombra: 0 16px 40px -18px rgb(0 0 0 / 0.7);
+  --vidro-sombra-flutuante: 0 28px 64px -20px rgb(0 0 0 / 0.85);
+}
+
+/* Fundo da aplicacao: camada fixa atras de tudo. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: var(--fundo-app);
+  pointer-events: none;
+}
+
+/* Superficies de vidro ---------------------------------------------------- */
+
+.vidro,
+.ex-card,
+.ex-stat,
+.ex-table-wrap {
+  background: var(--vidro-especular), var(--vidro-fundo);
+  border: 1px solid var(--vidro-contorno);
+  box-shadow: var(--vidro-brilho), var(--vidro-sombra);
+  -webkit-backdrop-filter: var(--vidro-desfoque);
+  backdrop-filter: var(--vidro-desfoque);
+}
+
+/* Elementos que flutuam (modal, menus, calendario, avisos): mais opacos. */
+.vidro--flutuante,
+.ex-popover,
+.ex-modal__panel {
+  background: var(--vidro-especular), var(--vidro-fundo-forte);
+  border: 1px solid var(--vidro-contorno);
+  box-shadow: var(--vidro-brilho), var(--vidro-sombra-flutuante);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+}
+
+/* Estado vazio: vidro mais leve, contorno tracejado. */
+.vidro--tracejado {
+  background: var(--vidro-fundo-leve);
+  border-style: dashed;
+  border-color: var(--line-strong);
+  box-shadow: none;
+}
+
+/* Barra lateral: vidro leve, deixa o degrade aparecer. */
+.ex-sidebar {
+  background: var(--vidro-especular), var(--vidro-fundo-leve);
+  border-right: 1px solid var(--vidro-contorno);
+  box-shadow: var(--vidro-brilho);
+  -webkit-backdrop-filter: var(--vidro-desfoque);
+  backdrop-filter: var(--vidro-desfoque);
+}
+
+/* Acessibilidade e compatibilidade: superficie solida quando nao ha desfoque. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .vidro,
+  .vidro--flutuante,
+  .ex-card,
+  .ex-stat,
+  .ex-table-wrap,
+  .ex-popover,
+  .ex-modal__panel,
+  .ex-sidebar {
+    background: var(--surface);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  body::before {
+    background: var(--bg);
+  }
+
+  .vidro,
+  .vidro--flutuante,
+  .ex-card,
+  .ex-stat,
+  .ex-table-wrap,
+  .ex-popover,
+  .ex-modal__panel,
+  .ex-sidebar {
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
