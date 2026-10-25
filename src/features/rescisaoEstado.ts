@@ -13,7 +13,7 @@ import { formularioRescisao, interpretarRescisao, lerValoresFolha } from './resc
  * formulario e aos parametros configurados.
  */
 
-const { tabelaInss } = useParametros()
+const { tabelaInss, tabelaIrrf } = useParametros()
 const { parametros } = useParametrosRescisao()
 
 /** A tabela INSS editavel corresponde a versao vigente mais recente. */
@@ -34,6 +34,7 @@ export const calculoRescisao = computed<{ resultado: ResultadoRescisao | null; e
         incidencias: parametros.value.incidencias,
         regras: parametros.value.regras,
         inssPersonalizado: { vigencia: vigenciaEditavel, tabela: tabelaInss.value },
+        irrfPersonalizado: { vigencia: vigenciaEditavel, tabela: tabelaIrrf.value },
       }),
       erro: null,
     }

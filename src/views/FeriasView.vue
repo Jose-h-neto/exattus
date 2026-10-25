@@ -39,7 +39,7 @@ import { useParametros } from '@/stores/parametros'
 
 const route = useRoute()
 const router = useRouter()
-const { tabelaInss } = useParametros()
+const { tabelaInss, tabelaIrrf } = useParametros()
 const conferencias = useConferencias()
 const { avisar } = useAvisos()
 
@@ -47,7 +47,7 @@ const leitura = computed(() => interpretarFerias(form))
 const erros = computed(() => leitura.value.erros)
 
 const resultado = computed(() =>
-  leitura.value.entrada ? calcularFerias(leitura.value.entrada, tabelaInss.value) : null,
+  leitura.value.entrada ? calcularFerias(leitura.value.entrada, tabelaInss.value, tabelaIrrf.value) : null,
 )
 
 const textoPeriodo = computed(() => {
@@ -322,7 +322,7 @@ watch(
           id="ferias-abono"
           v-model="form.possuiAbono"
           rotulo="Vender dias"
-          class="self-center pt-5"
+          class="campo-switch"
           @change="aoAlternarAbono(form)"
         />
 
@@ -370,7 +370,7 @@ watch(
           icone="ferias"
           :titulo="leitura.pendentes.length ? 'Complete os dados das férias' : 'Revise os campos destacados'"
         >
-          <ul v-if="leitura.pendentes.length" class="space-y-1.5 text-left text-sm">
+          <ul v-if="leitura.pendentes.length" class="mx-auto w-fit space-y-1.5 text-left text-sm">
             <li v-for="item in leitura.pendentes" :key="item" class="flex items-center gap-2 text-ink-2">
               <span class="size-1.5 rounded-full bg-line-strong" aria-hidden="true" />
               {{ item }}

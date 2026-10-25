@@ -119,7 +119,7 @@ const limite480 = computed(() => {
           :descricao="opcoes.length ? 'Indenizado: pago e projetado no tempo de serviço. Trabalhado: cumprido até o desligamento; com aviso proporcional, os dias acima de 30 são indenizados.' : undefined"
           largo
         >
-          <p v-if="!opcoes.length" class="col-span-2 text-[13px] text-muted lg:col-span-4">
+          <p v-if="!opcoes.length" class="col-span-2 pb-4 text-[13px] text-muted lg:col-span-4">
             Não há aviso prévio nesta modalidade.
           </p>
 
@@ -176,14 +176,14 @@ const limite480 = computed(() => {
             v-model="form.multa477"
             rotulo="Multa do art. 477, § 8º"
             descricao="Pagamento fora do prazo de 10 dias."
-            class="col-span-2"
+            class="col-span-2 pb-[22px]"
           />
           <UiSwitch
             id="resc-7238"
             v-model="form.indenizacao7238"
             rotulo="Indenização da Lei 7.238/84"
             descricao="Dispensa nos 30 dias anteriores à data-base."
-            class="col-span-2"
+            class="col-span-2 pb-[22px]"
           />
           <UiField id="resc-outros-descontos" rotulo="Outros descontos" opcional class="col-span-2" ajuda="Vale-transporte, adiantamentos e demais descontos sem incidência tributária." :erro="erros.outrosDescontos">
             <template #default="{ id, descricao, invalido }">

@@ -30,7 +30,7 @@ import { useParametros } from '@/stores/parametros'
 
 const route = useRoute()
 const router = useRouter()
-const { tabelaInss } = useParametros()
+const { tabelaInss, tabelaIrrf } = useParametros()
 const conferencias = useConferencias()
 const { avisar } = useAvisos()
 
@@ -46,7 +46,7 @@ const leitura = computed(() => interpretarFolha(form))
 const erros = computed(() => leitura.value.erros)
 
 const resultado = computed(() =>
-  leitura.value.entrada ? calcularFolha(leitura.value.entrada, tabelaInss.value) : null,
+  leitura.value.entrada ? calcularFolha(leitura.value.entrada, tabelaInss.value, tabelaIrrf.value) : null,
 )
 
 const aba = ref('inss')

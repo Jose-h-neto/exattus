@@ -2,7 +2,7 @@ import { chaveMes, somarDias } from './datas'
 import { dividirArredondando } from './dinheiro'
 import { calcularInss, type ResultadoInss } from './inss'
 import { calcularIrrf, type ResultadoIrrf } from './irrf'
-import type { TabelaInss } from './parametros'
+import { IRRF_2026, type TabelaInss, type TabelaIrrf } from './parametros'
 
 /*
  * Ordem do calculo:
@@ -105,7 +105,11 @@ export function ratearPorPesos(total: number, pesos: number[]): number[] {
   return itens.map((item) => item.valor)
 }
 
-export function calcularFerias(entrada: EntradaFerias, tabela: TabelaInss): ResultadoFerias {
+export function calcularFerias(
+  entrada: EntradaFerias,
+  tabela: TabelaInss,
+  tabelaIrrf: Readonly<TabelaIrrf> = IRRF_2026,
+): ResultadoFerias {
   const salarioFerias = dividirArredondando(entrada.salario * entrada.diasFerias, 30)
   const mediasFerias = entrada.medias
   const ferias = salarioFerias + mediasFerias
@@ -156,7 +160,7 @@ export function calcularFerias(entrada: EntradaFerias, tabela: TabelaInss): Resu
     rendimento: rendimentoIrrf,
     inss: inssUsado,
     dependentes: entrada.dependentes,
-  })
+  }, { tabela: tabelaIrrf })
 
   const totalDescontos = inssUsado + irrf.escolhida.irrf
 

@@ -172,3 +172,43 @@ export function descreverFaixaIrrf(indice: number, tabela: TabelaIrrf = IRRF_202
 
   return `De ${formatarMoeda(anterior.limite + 1)} a ${formatarMoeda(faixa.limite)}`
 }
+
+/**
+ * Parcela a deduzir que mantem a tabela progressiva continua:
+ * parcela anterior + limite anterior x (aliquota atual - aliquota anterior).
+ */
+export function parcelaDeduzirCalculada(faixas: readonly FaixaIrrf[], indice: number): number {
+  let parcela = 0
+
+  for (let atual = 1; atual <= indice; atual += 1) {
+    const anterior = faixas[atual - 1]
+    const faixa = faixas[atual]
+
+    if (!anterior || !faixa || !Number.isFinite(anterior.limite)) return parcela
+
+    parcela += dividirArredondando(anterior.limite * (faixa.aliquota - anterior.aliquota), 10000)
+  }
+
+  return parcela
+}
+
+export function validarTabelaIrrf(tabela: TabelaIrrf): string[] {
+  const erros: string[] = []
+  let anterior = 0
+
+  tabela.faixas.forEach((faixa, indice) => {
+    const ultima = indice === tabela.faixas.length - 1
+
+    if (!ultima && faixa.limite <= anterior) {
+      erros.push(`O limite da faixa ${indice + 1} deve ser maior que o da faixa anterior.`)
+    }
+
+    if (faixa.aliquota > 10000) {
+      erros.push(`A alíquota da faixa ${indice + 1} não pode passar de 100%.`)
+    }
+
+    if (!ultima) anterior = faixa.limite
+  })
+
+  return erros
+}

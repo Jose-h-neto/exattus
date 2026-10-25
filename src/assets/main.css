@@ -130,3 +130,53 @@
 .sr-only {
   left: 0;
 }
+
+/*
+ * Modais (ExModal): nunca mais altos que a area visivel. O painel rola por
+ * dentro e as acoes ficam fixas no rodape, sempre alcancaveis.
+ * 100dvh acompanha barras do navegador; o fallback em vh cobre navegadores antigos.
+ */
+.ex-modal__panel {
+  max-height: calc(100vh - 2 * var(--space-4));
+  max-height: calc(100dvh - 2 * var(--space-4));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.ex-modal__actions {
+  position: sticky;
+  bottom: calc(-1 * var(--space-6));
+  /* Faixa de borda a borda do painel, para o fundo nao aparecer recortado. */
+  margin: var(--space-6) calc(-1 * var(--space-6)) calc(-1 * var(--space-6));
+  padding: var(--space-4) var(--space-6) var(--space-6);
+  background: linear-gradient(to bottom, transparent, var(--surface) 45%);
+}
+
+.ex-modal--larga .ex-modal__panel {
+  max-width: 760px;
+}
+
+/*
+ * Regua de alinhamento dos formularios (UiField, UiSegmented).
+ * Campos da mesma linha esticam ate a mesma altura; o rotulo cresce para cima e
+ * a linha de mensagem e sempre reservada, entao os controles ficam alinhados
+ * mesmo com rotulos quebrados ou mensagens de erro.
+ */
+.campo-alinhado {
+  align-self: stretch;
+}
+
+/* Uma linha fixa: mensagem longa e abreviada (texto completo no title e para leitores de tela). */
+.campo-mensagem {
+  display: flex;
+  min-width: 0;
+  height: 16px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Switch na mesma linha de campos: centralizado na altura do controle. */
+.campo-switch {
+  align-self: end;
+  margin-bottom: calc(16px + 6px + (var(--control-md) - 20px) / 2);
+}

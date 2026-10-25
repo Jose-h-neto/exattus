@@ -1,7 +1,7 @@
 import { dividirArredondando } from './dinheiro'
 import { calcularInss, type Modalidade, type ResultadoInss } from './inss'
 import { calcularIrrf, type ResultadoIrrf } from './irrf'
-import type { TabelaInss } from './parametros'
+import { IRRF_2026, type TabelaInss, type TabelaIrrf } from './parametros'
 
 export interface EntradaFolha {
   modalidade: Modalidade
@@ -40,7 +40,11 @@ function conferir(calculado: number, informado: number | null): Conferencia | nu
   return informado === null ? null : { calculado, informado, diferenca: informado - calculado }
 }
 
-export function calcularFolha(entrada: EntradaFolha, tabela: TabelaInss): ResultadoFolha {
+export function calcularFolha(
+  entrada: EntradaFolha,
+  tabela: TabelaInss,
+  tabelaIrrf: Readonly<TabelaIrrf> = IRRF_2026,
+): ResultadoFolha {
   const proporcional = dividirArredondando(entrada.salario * entrada.dias, 30)
   const baseInss = entrada.baseInssManual ?? proporcional
   const inss = calcularInss(baseInss, tabela, entrada.modalidade)
@@ -49,7 +53,7 @@ export function calcularFolha(entrada: EntradaFolha, tabela: TabelaInss): Result
     rendimento: proporcional,
     inss: inss.total,
     dependentes: entrada.dependentes,
-  })
+  }, { tabela: tabelaIrrf })
 
   const totalDescontos = inss.total + irrf.escolhida.irrf
 

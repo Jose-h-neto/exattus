@@ -27,7 +27,7 @@ watch(
 </script>
 
 <template>
-  <div role="group" :aria-labelledby="id" class="border-t border-line px-5 py-5 first:border-t-0">
+  <div role="group" :aria-labelledby="id" class="border-t border-line px-5 pt-5 pb-1 first:border-t-0">
     <div class="flex items-center gap-1.5" :class="!recolhivel && 'mb-4'">
       <button
         v-if="recolhivel"
@@ -48,7 +48,7 @@ watch(
     <div
       v-show="!recolhivel || expandido"
       :id="`${id}-campos`"
-      class="grid grid-cols-2 gap-x-4 gap-y-4"
+      class="grid grid-cols-2 gap-x-4 gap-y-0"
       :class="[recolhivel && 'mt-4', largo && 'lg:grid-cols-4']"
     >
       <slot />

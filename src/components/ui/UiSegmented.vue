@@ -1,5 +1,11 @@
 <script setup lang="ts" generic="T extends string">
-/** Escolha unica em trilha segmentada (visual ex-tabs segmented), com radios nativos. */
+import { useId } from 'vue'
+
+/**
+ * Escolha unica em trilha segmentada (visual ex-tabs segmented), com radios nativos.
+ * Segue a mesma regua de alinhamento do UiField (rotulo ancorado embaixo e
+ * linha de mensagem reservada), para alinhar com os campos da mesma linha.
+ */
 const modelo = defineModel<T>({ required: true })
 
 defineProps<{
@@ -7,11 +13,15 @@ defineProps<{
   rotulo: string
   opcoes: { valor: T; rotulo: string }[]
 }>()
+
+const id = useId()
 </script>
 
 <template>
-  <fieldset class="ex-field">
-    <legend class="ex-label mb-1.5">{{ rotulo }}</legend>
+  <div class="ex-field campo-alinhado" role="radiogroup" :aria-labelledby="id">
+    <div class="flex min-w-0 flex-1 items-end">
+      <span :id="id" class="ex-label">{{ rotulo }}</span>
+    </div>
 
     <!-- Selecionado preenchido com primary: inequivoco nos dois temas (surface e sunken quase se confundem no escuro). -->
     <div class="grid h-(--control-md) auto-cols-fr grid-flow-col gap-0.5 rounded-md border border-line-strong/60 bg-sunken p-[3px]">
@@ -29,5 +39,7 @@ defineProps<{
         <span class="truncate">{{ opcao.rotulo }}</span>
       </label>
     </div>
-  </fieldset>
+
+    <span class="campo-mensagem" aria-hidden="true" />
+  </div>
 </template>

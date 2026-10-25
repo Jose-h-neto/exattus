@@ -166,7 +166,7 @@ function aoMudarDesligamento() {
         id="resc-clausula"
         v-model="form.clausulaAssecuratoria"
         rotulo="Cláusula assecuratória (art. 481)"
-        class="col-span-2 self-center pt-5"
+        class="campo-switch col-span-2"
       />
     </UiFormGroup>
 
@@ -285,7 +285,7 @@ function aoMudarDesligamento() {
         </template>
       </UiField>
 
-      <div class="col-span-2 flex items-center gap-1.5 pt-1 lg:col-span-4">
+      <div class="col-span-2 flex items-center gap-1.5 pt-1 pb-1.5 lg:col-span-4">
         <p class="text-xs font-medium text-ink-2">Folha anterior paga no mesmo mês da rescisão</p>
         <UiInfo
           texto="IRRF por regime de caixa. Ex.: a folha de setembro paga em outubro e a rescisão paga em outubro são somadas na base do IRRF; o imposto já retido na folha é abatido."
@@ -312,7 +312,7 @@ function aoMudarDesligamento() {
 
       <div class="hidden lg:block" />
 
-      <div class="col-span-2 flex items-center gap-1.5 pt-1 lg:col-span-4">
+      <div class="col-span-2 flex items-center gap-1.5 pt-1 pb-1.5 lg:col-span-4">
         <p class="text-xs font-medium text-ink-2">Já pago na competência do desligamento</p>
         <UiInfo texto="INSS por competência: remuneração do mesmo mês do desligamento paga antes da rescisão (ex.: adiantamento com INSS). Soma-se à base e o INSS já descontado é abatido." />
       </div>

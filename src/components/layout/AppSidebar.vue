@@ -26,7 +26,7 @@ const botaoMenu = computed(() => {
 })
 
 const { total } = useConferencias()
-const { personalizada } = useParametros()
+const { algumaPersonalizada: personalizada } = useParametros()
 const { tema, alternar: alternarTema } = useTema()
 </script>
 
@@ -68,9 +68,9 @@ const { tema, alternar: alternarTema } = useTema()
             <span
               v-if="item.rota === 'parametros' && personalizada"
               class="size-2 rounded-full bg-warning"
-              title="Tabela INSS personalizada"
+              title="Tabela personalizada em uso"
             >
-              <span class="ex-sr">Tabela INSS personalizada</span>
+              <span class="ex-sr">Tabela personalizada em uso</span>
             </span>
           </a>
         </RouterLink>
@@ -88,7 +88,7 @@ const { tema, alternar: alternarTema } = useTema()
           @click="emit('navegar')"
         >
           <UiIcon nome="alerta" :tamanho="14" />
-          Tabela INSS personalizada
+          Tabela personalizada em uso
         </RouterLink>
       </div>
 

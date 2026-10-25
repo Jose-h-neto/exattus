@@ -50,9 +50,10 @@ const GRUPOS = [
 </script>
 
 <template>
-  <UiModal :aberto="aberta" titulo="Atalhos de teclado" @fechar="aberta = false">
-    <div class="-mt-1 space-y-4">
-      <section v-for="grupo in GRUPOS" :key="grupo.titulo">
+  <UiModal :aberto="aberta" titulo="Atalhos de teclado" largura="larga" @fechar="aberta = false">
+    <!-- Duas colunas em telas largas: o modal fica com metade da altura. -->
+    <div class="-mt-1 gap-x-8 md:columns-2">
+      <section v-for="grupo in GRUPOS" :key="grupo.titulo" class="mb-4 break-inside-avoid last:mb-0">
         <h3 class="mb-1.5 text-[11px] font-bold tracking-[0.06em] text-ink-subtle uppercase">{{ grupo.titulo }}</h3>
         <dl class="divide-y divide-line">
           <div v-for="item in grupo.itens" :key="item.acao" class="flex items-center justify-between gap-4 py-1.5">

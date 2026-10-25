@@ -2,7 +2,7 @@ import { chaveMes, formatarData, somarDias } from '../datas'
 import { dividirArredondando, formatarMoeda, formatarPercentual } from '../dinheiro'
 import { calcularInss, type ResultadoInss } from '../inss'
 import { calcularIrrf, type ResultadoIrrf } from '../irrf'
-import { versaoDaCompetencia, type TabelaInss, type VersaoTabelas } from '../parametros'
+import { versaoDaCompetencia, type TabelaInss, type TabelaIrrf, type VersaoTabelas } from '../parametros'
 import {
   obterModalidade,
   regraEfetiva,
@@ -180,6 +180,8 @@ export interface ConfiguracaoRescisao {
   regras: RegrasRescisao
   /** Tabela INSS personalizada para a versao vigente, quando houver. */
   inssPersonalizado?: { vigencia: string; tabela: TabelaInss }
+  /** Tabela IRRF personalizada para a versao vigente, quando houver. */
+  irrfPersonalizado?: { vigencia: string; tabela: TabelaIrrf }
 }
 
 export class ErroRescisao extends Error {}
@@ -207,11 +209,13 @@ function versaoPara(data: Date, configuracao: ConfiguracaoRescisao, tipo: string
     throw new ErroRescisao(`Não há tabelas de ${tipo} cadastradas para a competência ${competencia}.`)
   }
 
-  const personalizado = configuracao.inssPersonalizado
+  const { inssPersonalizado, irrfPersonalizado } = configuracao
 
-  return personalizado && personalizado.vigencia === versao.vigencia
-    ? { ...versao, inss: personalizado.tabela }
-    : versao
+  return {
+    ...versao,
+    inss: inssPersonalizado?.vigencia === versao.vigencia ? inssPersonalizado.tabela : versao.inss,
+    irrf: irrfPersonalizado?.vigencia === versao.vigencia ? irrfPersonalizado.tabela : versao.irrf,
+  }
 }
 
 export function calcularRescisao(

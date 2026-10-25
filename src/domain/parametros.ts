@@ -85,6 +85,15 @@ export const IRRF_2026: Readonly<TabelaIrrf> = Object.freeze({
   reducao: REDUCAO_2026,
 })
 
+export function copiarTabelaIrrf(tabela: Readonly<TabelaIrrf>): TabelaIrrf {
+  return {
+    dependente: tabela.dependente,
+    simplificado: tabela.simplificado,
+    faixas: tabela.faixas.map((faixa) => ({ ...faixa })),
+    reducao: tabela.reducao,
+  }
+}
+
 /** Aliquota padrao do FGTS (8%). */
 export const ALIQUOTA_FGTS = 800
 
