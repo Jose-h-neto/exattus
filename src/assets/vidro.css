@@ -58,6 +58,10 @@
   --vidro-menu-especular: var(--vidro-especular);
   --vidro-menu-desfoque: blur(40px) saturate(180%);
   --vidro-menu-brilho: inset -1px 0 0 rgb(255 255 255 / 0.4);
+
+  /* Item selecionado do menu: forca da cor da paleta no fundo e cor do texto. */
+  --nav-selecao-forca: 14%;
+  --nav-selecao-texto: var(--primary-hover);
 }
 
 [data-theme="dark"] {
@@ -102,6 +106,9 @@
   --vidro-menu-especular: linear-gradient(transparent, transparent);
   --vidro-menu-desfoque: blur(40px) saturate(170%);
   --vidro-menu-brilho: inset -1px 0 0 rgb(255 255 255 / 0.05);
+
+  --nav-selecao-forca: 22%;
+  --nav-selecao-texto: var(--primary-hover);
 }
 
 /* Fundo da aplicacao: camada fixa atras de tudo. */
@@ -153,6 +160,28 @@ body::before {
   box-shadow: var(--vidro-menu-brilho);
   -webkit-backdrop-filter: var(--vidro-menu-desfoque);
   backdrop-filter: var(--vidro-menu-desfoque);
+}
+
+/*
+ * Navegacao sobre o vidro do menu. O primary-soft do design system foi pensado
+ * para superficie solida: sobre o vidro, que ja deixa passar o tom do degrade,
+ * ele quase some. Aqui a selecao usa a cor da paleta translucida e um contorno
+ * fino; o hover fica translucido para nao brilhar mais que a selecao. O texto usa
+ * primary-hover, que e mais escuro que o primary no claro e mais claro no
+ * escuro, compensando o fundo tingido.
+ */
+.ex-sidebar .ex-nav-item:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.ex-sidebar .ex-nav-item[aria-current="page"] {
+  background: color-mix(in srgb, var(--primary) var(--nav-selecao-forca), transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--primary) 24%, transparent);
+  color: var(--nav-selecao-texto);
+}
+
+.ex-sidebar .ex-nav-item:focus-visible {
+  box-shadow: var(--focus-ring);
 }
 
 /* Acessibilidade e compatibilidade: superficie solida quando nao ha desfoque. */
