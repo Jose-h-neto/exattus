@@ -69,7 +69,7 @@ function aoMudarDesligamento() {
     <UiFormGroup titulo="Funcionário e remuneração" largo>
       <UiField id="resc-referencia" rotulo="Funcionário ou referência" opcional class="col-span-2">
         <template #default="{ id }">
-          <UiInput :id="id" v-model="form.referencia" placeholder="Ex.: Ana Souza — matrícula 1042" autocomplete="off" />
+          <UiInput :id="id" v-model="form.referencia" autocomplete="off" />
         </template>
       </UiField>
 
@@ -288,7 +288,7 @@ function aoMudarDesligamento() {
       <div class="col-span-2 flex items-center gap-1.5 pt-1 pb-1.5 lg:col-span-4">
         <p class="text-xs font-medium text-ink-2">Folha anterior paga no mesmo mês da rescisão</p>
         <UiInfo
-          texto="IRRF por regime de caixa. Ex.: a folha de setembro paga em outubro e a rescisão paga em outubro são somadas na base do IRRF; o imposto já retido na folha é abatido."
+          texto="IRRF por regime de caixa. Por exemplo, a folha de setembro paga em outubro e a rescisão paga em outubro são somadas na base do IRRF; o imposto já retido na folha é abatido."
         />
       </div>
 
@@ -314,7 +314,7 @@ function aoMudarDesligamento() {
 
       <div class="col-span-2 flex items-center gap-1.5 pt-1 pb-1.5 lg:col-span-4">
         <p class="text-xs font-medium text-ink-2">Já pago na competência do desligamento</p>
-        <UiInfo texto="INSS por competência: remuneração do mesmo mês do desligamento paga antes da rescisão (ex.: adiantamento com INSS). Soma-se à base e o INSS já descontado é abatido." />
+        <UiInfo texto="INSS por competência: remuneração do mesmo mês do desligamento paga antes da rescisão, como um adiantamento com INSS. Soma-se à base e o INSS já descontado é abatido." />
       </div>
 
       <UiField id="resc-comp-rem" rotulo="Remuneração" opcional :erro="erros.competenciaRemuneracao">

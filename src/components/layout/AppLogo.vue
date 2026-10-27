@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
- * Marca do Exattus (gato). Desenhada com currentColor: use text-[#5D3BCC] no
- * tema claro e text-primary no escuro (o roxo original perde contraste no fundo escuro).
+ * Marca do Exattus (gato). Desenhada com currentColor: use text-primary, para a
+ * marca acompanhar a paleta de destaque e o tema (no escuro, o primary e mais claro
+ * e mantem o contraste). Na Violeta, #5a3fc0 fica a um tom do roxo original #5D3BCC.
  * Arquivo original: src/assets/exattus/logo-gato.svg.
  */
 withDefaults(defineProps<{ tamanho?: number }>(), { tamanho: 28 })

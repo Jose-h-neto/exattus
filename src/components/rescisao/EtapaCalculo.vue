@@ -120,7 +120,7 @@ const SITUACOES: Record<SituacaoPeriodo, { texto: string; tom: 'neutro' | 'marca
                 </td>
                 <td class="num">{{ formatarMoeda(linha.base) }}</td>
                 <td class="num">{{ formatarMoeda(linha.calculado) }}</td>
-                <td class="num text-muted">{{ linha.abatido ? formatarMoeda(linha.abatido) : '—' }}</td>
+                <td class="num text-muted">{{ formatarMoeda(linha.abatido ?? 0) }}</td>
                 <td class="num pr-5 font-medium text-ink">{{ formatarMoeda(linha.devido) }}</td>
               </tr>
             </tbody>
@@ -224,8 +224,8 @@ const SITUACOES: Record<SituacaoPeriodo, { texto: string; tom: 'neutro' | 'marca
                       <td class="num text-left">{{ formatarData(periodo.fimConcessivo) }}</td>
                       <td><UiBadge :tom="SITUACOES[periodo.situacao].tom">{{ SITUACOES[periodo.situacao].texto }}</UiBadge></td>
                       <td class="num">{{ periodo.faltas }}</td>
-                      <td class="num">{{ periodo.situacao === 'gozado' ? '—' : periodo.dias }}</td>
-                      <td class="num">{{ periodo.valor ? formatarMoeda(periodo.valor) : '—' }}</td>
+                      <td class="num">{{ periodo.situacao === 'gozado' ? 0 : periodo.dias }}</td>
+                      <td class="num">{{ formatarMoeda(periodo.valor ?? 0) }}</td>
                     </tr>
                   </tbody>
                 </table>

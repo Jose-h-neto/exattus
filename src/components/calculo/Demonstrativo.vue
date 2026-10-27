@@ -35,7 +35,7 @@ defineProps<{
 
     <!-- Coluna estreita: lista empilhada, sem rolagem horizontal. -->
     <ul class="divide-y divide-line @xl:hidden">
-      <li v-for="linha in linhas" :key="linha.descricao" class="flex items-start justify-between gap-4 px-4 py-3 text-sm">
+      <li v-for="(linha, indice) in linhas" :key="indice" class="flex items-start justify-between gap-4 px-4 py-3 text-sm">
         <div class="min-w-0">
           <p class="font-medium text-ink">
             {{ linha.descricao }}
@@ -71,7 +71,7 @@ defineProps<{
           </tr>
         </thead>
         <tbody>
-          <tr v-for="linha in linhas" :key="linha.descricao">
+          <tr v-for="(linha, indice) in linhas" :key="indice">
             <td class="pl-5">
               <span class="font-medium text-ink">{{ linha.descricao }}</span>
               <span

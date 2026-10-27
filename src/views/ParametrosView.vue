@@ -504,7 +504,7 @@ const reducao = REDUCAO_2026
         </div>
       </UiPanel>
 
-      <UiPanel id="reducao" titulo="Redução do imposto — Lei nº 15.270/2025" descricao="Aplicada sobre o imposto calculado pela tabela" class="scroll-mt-8">
+      <UiPanel id="reducao" titulo="Redução do imposto (Lei nº 15.270/2025)" descricao="Aplicada sobre o imposto calculado pela tabela" class="scroll-mt-8">
         <table class="tabela">
           <thead>
             <tr>
@@ -516,7 +516,7 @@ const reducao = REDUCAO_2026
             <tr>
               <td class="num pl-5 text-left text-ink">Até {{ formatarMoeda(reducao.limiteIsencao) }}</td>
               <td class="pr-5">
-                Até {{ formatarMoeda(reducao.reducaoMaxima) }}, limitada ao imposto calculado — o IRRF fica zerado.
+                Até {{ formatarMoeda(reducao.reducaoMaxima) }}, limitada ao imposto calculado, o que zera o IRRF.
               </td>
             </tr>
             <tr>
@@ -541,6 +541,7 @@ const reducao = REDUCAO_2026
             ['Arredondamento', 'Todos os valores são calculados em centavos inteiros, com arredondamento a cada faixa.'],
             ['Salário proporcional', 'Salário bruto ÷ 30 × dias trabalhados; o mês é sempre considerado com 30 dias.'],
             ['Horas extras, comissões e DSR', 'Somados ao salário proporcional pelo valor informado, sem proporcionalizar pelos dias. Integram as bases do INSS e do IRRF da folha mensal.'],
+            ['Horas extras em horas', 'Base ÷ divisor × horas × (100% + adicional), com um arredondamento por linha. A base é o salário bruto mensal, salvo quando informada outra (Súmula 264 do TST).'],
             ['INSS do empregado', 'Progressivo por faixas até o teto. Faixas completas usam o valor fixo da tabela, quando informado.'],
             ['INSS do pró-labore', 'Alíquota única sobre a base, limitada ao teto de contribuição.'],
             ['Modelo do IRRF', 'O sistema calcula pelas deduções legais (INSS + dependentes) e pelo desconto simplificado e adota o menor imposto.'],

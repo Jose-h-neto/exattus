@@ -109,7 +109,7 @@ function pistas(item: ItemConferencia): string[] {
               class="num text-xl font-semibold"
               :class="resumo.diferencaLiquido ? 'text-warning' : resumo.diferencaLiquido === 0 ? 'text-positive' : 'text-muted'"
             >
-              {{ resumo.diferencaLiquido === null ? '—' : `${resumo.diferencaLiquido > 0 ? '+' : ''}${formatarMoeda(resumo.diferencaLiquido)}` }}
+              {{ resumo.diferencaLiquido === null ? 'Não conferido' :`${resumo.diferencaLiquido > 0 ? '+' : ''}${formatarMoeda(resumo.diferencaLiquido)}` }}
             </dd>
           </div>
         </dl>
@@ -162,9 +162,9 @@ function pistas(item: ItemConferencia): string[] {
                   </td>
                   <td><UiBadge :tom="SITUACOES[item.situacao].tom">{{ SITUACOES[item.situacao].texto }}</UiBadge></td>
                   <td class="num">{{ formatarMoeda(item.calculado) }}</td>
-                  <td class="num">{{ item.informado === null ? '—' : formatarMoeda(item.informado) }}</td>
+                  <td class="num">{{ item.informado === null ? 'Não informado' : formatarMoeda(item.informado) }}</td>
                   <td class="num pr-5" :class="item.situacao === 'divergente' ? 'font-semibold text-negative' : 'text-positive'">
-                    {{ item.diferenca === null ? '—' : `${item.diferenca > 0 ? '+' : ''}${formatarMoeda(item.diferenca)}` }}
+                    {{ item.diferenca === null ? 'Não conferido' :`${item.diferenca > 0 ? '+' : ''}${formatarMoeda(item.diferenca)}` }}
                   </td>
                 </tr>
                 <tr v-if="aberto === item.chave">

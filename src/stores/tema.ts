@@ -29,13 +29,18 @@ aplicar(tema.value)
 
 watch(tema, aplicar)
 
+function definir(valor: Tema) {
+  tema.value = valor
+  gravarJson(CHAVE, valor)
+}
+
 export function useTema() {
   return {
     tema,
+    definir,
 
     alternar() {
-      tema.value = tema.value === 'dark' ? 'light' : 'dark'
-      gravarJson(CHAVE, tema.value)
+      definir(tema.value === 'dark' ? 'light' : 'dark')
     },
   }
 }

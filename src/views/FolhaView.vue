@@ -6,6 +6,7 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import BarraResultadoMovel from '@/components/calculo/BarraResultadoMovel.vue'
 import ConferenciaHolerite from '@/components/calculo/ConferenciaHolerite.vue'
 import Demonstrativo, { type LinhaDemonstrativo } from '@/components/calculo/Demonstrativo.vue'
+import HorasExtrasHoras from '@/components/calculo/HorasExtrasHoras.vue'
 import MemoriaInss from '@/components/calculo/MemoriaInss.vue'
 import MemoriaIrrf from '@/components/calculo/MemoriaIrrf.vue'
 import ResumoValores from '@/components/calculo/ResumoValores.vue'
@@ -14,6 +15,7 @@ import UiButton from '@/components/ui/UiButton.vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiField from '@/components/ui/UiField.vue'
 import UiFormGroup from '@/components/ui/UiFormGroup.vue'
+import type { NomeIcone } from '@/components/ui/UiIcon.vue'
 import UiInput from '@/components/ui/UiInput.vue'
 import UiMoneyInput from '@/components/ui/UiMoneyInput.vue'
 import UiSegmented from '@/components/ui/UiSegmented.vue'
@@ -21,8 +23,15 @@ import UiTabs from '@/components/ui/UiTabs.vue'
 
 import { formatarMoeda, formatarPercentual } from '@/domain/dinheiro'
 import { calcularFolha } from '@/domain/folha'
+import { formatarAdicional, formatarHoras } from '@/domain/horasExtras'
 import type { Modalidade } from '@/domain/inss'
-import { formularioFolha as form, formularioFolhaPadrao, interpretarFolha } from '@/features/folha'
+import {
+  copiarFormularioFolha,
+  formularioFolha as form,
+  formularioFolhaPadrao,
+  interpretarFolha,
+  type ModoHorasExtras,
+} from '@/features/folha'
 import { useAtalhos } from '@/lib/teclado'
 import { useAvisos } from '@/stores/avisos'
 import { useConferencias } from '@/stores/conferencias'
@@ -37,6 +46,11 @@ const { avisar } = useAvisos()
 const modalidades: { valor: Modalidade; rotulo: string }[] = [
   { valor: 'empregado', rotulo: 'Empregado' },
   { valor: 'prolabore', rotulo: 'Pró-labore' },
+]
+
+const modosHorasExtras: { valor: ModoHorasExtras; rotulo: string; icone: NomeIcone }[] = [
+  { valor: 'valor', rotulo: 'Valor', icone: 'dinheiro' },
+  { valor: 'horas', rotulo: 'Horas', icone: 'relogio' },
 ]
 
 /** Abre o grupo de ajustes quando ha valores preenchidos (ex.: conferencia reaberta). */
@@ -63,6 +77,24 @@ const abas = computed(() => [
   { id: 'irrf', rotulo: 'Memória do IRRF' },
 ])
 
+/** Em horas, uma linha por adicional, como no holerite; em valor, uma linha so. */
+function linhasHorasExtras(total: number): LinhaDemonstrativo[] {
+  const calculo = leitura.value.horasExtras?.resultado
+
+  if (!calculo) {
+    return total > 0 ? [{ descricao: 'Horas extras', provento: total }] : []
+  }
+
+  return calculo.linhas
+    .filter((linha) => linha.minutos > 0)
+    .map((linha) => ({
+      descricao: `Horas extras ${formatarAdicional(linha.adicional)}`,
+      detalhe: `Valor-hora ${formatarMoeda(calculo.valorHora)} · divisor ${calculo.entrada.divisor}`,
+      referencia: formatarHoras(linha.minutos),
+      provento: linha.valor,
+    }))
+}
+
 const linhas = computed<LinhaDemonstrativo[]>(() => {
   const r = resultado.value
 
@@ -81,7 +113,7 @@ const linhas = computed<LinhaDemonstrativo[]>(() => {
       referencia: `${r.entrada.dias} dias`,
       provento: r.proporcional,
     },
-    ...(r.entrada.horasExtras > 0 ? [{ descricao: 'Horas extras', provento: r.entrada.horasExtras }] : []),
+    ...linhasHorasExtras(r.entrada.horasExtras),
     ...(r.entrada.comissoes > 0 ? [{ descricao: 'Comissões', provento: r.entrada.comissoes }] : []),
     ...(r.entrada.dsr > 0 ? [{ descricao: 'DSR', detalhe: 'Sobre horas extras e comissões', provento: r.entrada.dsr }] : []),
     {
@@ -127,7 +159,7 @@ function salvar() {
   conferencias.salvar({
     tipo: 'folha',
     referencia: form.referencia.trim() || 'Sem identificação',
-    formulario: { ...form },
+    formulario: copiarFormularioFolha(form),
     resumo: {
       detalhe: [
         r.entrada.modalidade === 'prolabore' ? 'Pró-labore' : 'Empregado',
@@ -157,7 +189,7 @@ watch(
     const salva = conferencias.obter(id)
 
     if (salva?.tipo === 'folha') {
-      Object.assign(form, formularioFolhaPadrao(), salva.formulario)
+      Object.assign(form, formularioFolhaPadrao(), copiarFormularioFolha(salva.formulario))
       avisar(`Conferência "${salva.referencia}" carregada.`, 'info')
     }
 
@@ -185,7 +217,7 @@ watch(
       <UiFormGroup titulo="Dados do cálculo" descricao="O salário proporcional considera sempre o mês comercial de 30 dias.">
         <UiField id="folha-referencia" rotulo="Funcionário ou referência" opcional class="col-span-2">
           <template #default="{ id }">
-            <UiInput :id="id" v-model="form.referencia" placeholder="Ex.: José — Junho/2026" autocomplete="off" />
+            <UiInput :id="id" v-model="form.referencia" autocomplete="off" />
           </template>
         </UiField>
 
@@ -207,12 +239,38 @@ watch(
           <UiField
             id="folha-horas-extras"
             rotulo="Horas extras"
-            opcional
-            ajuda="Valor total do mês, somado ao salário. Não é proporcionalizado pelos dias trabalhados."
-            :erro="erros.horasExtras"
+            :opcional="form.horasExtrasModo === 'valor'"
+            :grupo="form.horasExtrasModo === 'horas'"
+            :ajuda="
+              form.horasExtrasModo === 'valor'
+                ? 'Valor total do mês, somado ao salário. Não é proporcionalizado pelos dias trabalhados.'
+                : 'Base ÷ divisor × horas × (100% + adicional). O arredondamento é feito uma vez em cada linha; se a folha arredondar o valor-hora antes, pode haver diferença de centavos.'
+            "
+            :erro="form.horasExtrasModo === 'valor' ? erros.horasExtras : undefined"
+            class="col-span-2"
           >
+            <template #acao>
+              <UiSegmented v-model="form.horasExtrasModo" compacto nome="folha-he-modo" rotulo="Informar horas extras em" :opcoes="modosHorasExtras" />
+            </template>
             <template #default="{ id, descricao, invalido }">
-              <UiMoneyInput :id="id" v-model="form.horasExtras" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
+              <UiMoneyInput
+                v-if="form.horasExtrasModo === 'valor'"
+                :id="id"
+                v-model="form.horasExtras"
+                placeholder="0,00"
+                :invalido="invalido"
+                :aria-describedby="descricao"
+              />
+              <HorasExtrasHoras
+                v-else
+                v-model:linhas="form.horasExtrasLinhas"
+                v-model:base="form.baseValorHora"
+                v-model:divisor="form.divisor"
+                :leitura="leitura.horasExtras"
+                :erro-base="erros.baseValorHora"
+                :erro-divisor="erros.divisor"
+                :rotulado-por="`${id}-rotulo`"
+              />
             </template>
           </UiField>
 

@@ -45,6 +45,8 @@ import {
   ArrowRightDoubleIcon,
   UserRemove01Icon,
   Archive02Icon,
+  Cash01Icon,
+  PaintBoardIcon,
 } from '@hugeicons/core-free-icons'
 
 export const icons = {
@@ -90,6 +92,8 @@ export const icons = {
   'expandir': ArrowRightDoubleIcon,
   'desligamento': UserRemove01Icon,
   'arquivo': Archive02Icon,
+  'dinheiro': Cash01Icon,
+  'paleta': PaintBoardIcon,
 } as const
 
 export type IconName = keyof typeof icons

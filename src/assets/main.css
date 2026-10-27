@@ -6,6 +6,7 @@
  */
 @import "./exattus/tokens.css";
 @import "./exattus/bundle.css";
+@import "./exattus/paletas.css";
 @import "./vidro.css";
 @import "tailwindcss";
 

@@ -7,17 +7,17 @@ export type ModoMenu = 'fixo' | 'flutuante' | 'gaveta'
 import { computed } from 'vue'
 
 import { NAVEGACAO } from '@/app/navegacao'
-import { ANO_VIGENCIA } from '@/domain/parametros'
 import { useConferencias } from '@/stores/conferencias'
 import { useParametros } from '@/stores/parametros'
-import { useTema } from '@/stores/tema'
 import UiIcon from '@/components/ui/UiIcon.vue'
 import { abrirAjudaAtalhos } from './AjudaAtalhos.vue'
+import AppAparencia from './AppAparencia.vue'
 import AppLogo from './AppLogo.vue'
 
 const props = defineProps<{ modo: ModoMenu }>()
 
-const emit = defineEmits<{ navegar: []; alternar: [] }>()
+/** aparencia: painel de Aparencia aberto ou fechado (o menu recolhido nao some enquanto aberto). */
+const emit = defineEmits<{ navegar: []; alternar: []; aparencia: [aberto: boolean] }>()
 
 const botaoMenu = computed(() => {
   if (props.modo === 'fixo') return { icone: 'recolher' as const, rotulo: 'Recolher menu' }
@@ -27,7 +27,6 @@ const botaoMenu = computed(() => {
 
 const { total } = useConferencias()
 const { algumaPersonalizada: personalizada } = useParametros()
-const { tema, alternar: alternarTema } = useTema()
 </script>
 
 <template>
@@ -35,7 +34,7 @@ const { tema, alternar: alternarTema } = useTema()
   <nav class="ex-sidebar !w-full" aria-label="Navegação principal">
     <div class="flex items-center justify-between gap-2 pb-6 pl-2">
       <span class="flex items-center gap-2.5">
-        <AppLogo :tamanho="30" class="text-[#5D3BCC] dark:text-primary" />
+        <AppLogo :tamanho="30" class="text-primary" />
         <span class="text-xl leading-none font-extrabold tracking-[-0.03em] text-ink">Exattus</span>
       </span>
 
@@ -77,30 +76,13 @@ const { tema, alternar: alternarTema } = useTema()
       </template>
     </div>
 
-    <div class="ex-sidebar__footer space-y-3">
-      <div class="text-xs leading-4 text-ink-muted">
-        <p class="font-semibold text-ink">Parâmetros {{ ANO_VIGENCIA }}</p>
-        <p class="mt-0.5">INSS · IRRF · Lei nº 15.270/2025</p>
-        <RouterLink
-          v-if="personalizada"
-          :to="{ name: 'parametros' }"
-          class="mt-2 inline-flex items-center gap-1.5 font-semibold text-warning hover:underline"
-          @click="emit('navegar')"
-        >
-          <UiIcon nome="alerta" :tamanho="14" />
-          Tabela personalizada em uso
-        </RouterLink>
-      </div>
-
+    <div class="ex-sidebar__footer space-y-1">
       <button type="button" class="ex-nav-item" aria-keyshortcuts="Shift+?" @click="abrirAjudaAtalhos">
         <kbd class="inline-grid size-5 place-items-center rounded-xs border border-line-strong font-mono text-[11px]">?</kbd>
         <span class="ex-nav-item__label">Atalhos de teclado</span>
       </button>
 
-      <button type="button" class="ex-nav-item" :aria-pressed="tema === 'dark'" @click="alternarTema">
-        <UiIcon :nome="tema === 'dark' ? 'sol' : 'lua'" :tamanho="20" />
-        <span class="ex-nav-item__label">{{ tema === 'dark' ? 'Tema claro' : 'Tema escuro' }}</span>
-      </button>
+      <AppAparencia @aberto="(valor) => emit('aparencia', valor)" />
     </div>
   </nav>
 </template>

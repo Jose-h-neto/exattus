@@ -17,10 +17,11 @@ const local = computed(() => localizarItem(String(route.name ?? '')))
     class="mb-6 flex flex-col gap-4 border-b border-line pb-5 md:flex-row md:items-end md:justify-between"
   >
     <div class="min-w-0">
-      <nav aria-label="Trilha" class="mb-1.5 flex items-center gap-1 text-xs text-muted">
+      <!-- Trilha direto sobre o degrade (sem vidro): texto em ink para manter 4,5:1 sobre o brilho do fundo. -->
+      <nav aria-label="Trilha" class="mb-1.5 flex items-center gap-1 text-xs text-ink-2">
         <span>{{ local.grupo.titulo }}</span>
-        <UiIcon nome="seta" :tamanho="13" />
-        <span aria-current="page" class="text-ink-2">{{ local.item.rotulo }}</span>
+        <UiIcon nome="seta" :tamanho="13" class="text-muted" />
+        <span aria-current="page" class="font-semibold">{{ local.item.rotulo }}</span>
       </nav>
       <div class="flex items-center gap-2">
         <h1 class="text-2xl leading-8 font-bold tracking-[-0.015em] text-ink">{{ local.item.rotulo }}</h1>

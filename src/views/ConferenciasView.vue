@@ -206,7 +206,7 @@ function exportarCsv() {
                 <UiBadge v-if="situacao(item)" :tom="situacao(item)!.tom" :title="item.tipo === 'rescisao' ? 'Itens divergentes da folha' : 'Diferença do INSS informado'">
                   {{ situacao(item)!.texto }}
                 </UiBadge>
-                <span v-else class="text-muted">—</span>
+                <span v-else class="text-muted">Não conferido</span>
               </td>
               <td class="num text-left text-muted">{{ formatarDataHora(item.salvoEm) }}</td>
               <td class="pr-5">

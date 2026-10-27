@@ -23,7 +23,7 @@ function adotada(opcao: OpcaoIrrf) {
 const linhas = computed(() => {
   const { irrf } = props
   const m = (valor: number) => formatarMoeda(valor)
-  const vazio = '—'
+  const vazio = 'Não se aplica'
   const comSimplificado = irrf.simplificadoPermitido
   const par = (legal: string, simplificado: string) => (comSimplificado ? [legal, simplificado] : [legal])
 

@@ -1,47 +1,107 @@
 /*
  * Fundo em degrade e efeito "liquid glass" do Exattus.
  *
- * Cores tiradas da paleta do design system: violet-200/400/600/800, orchid,
- * sky e o slate de chart-4. O vidro e translucido com desfoque e saturacao
- * do que esta atras, contorno fino, brilho especular no topo e sombra suave.
- * Opacidade calibrada para manter o texto em 4,5:1 nos dois temas.
+ * O degrade usa quatro cores (canais RGB em --fundo-1..4) e dois tons de base;
+ * cada paleta de destaque define as suas em exattus/paletas.css. Os valores
+ * abaixo sao os da Violeta (padrao): violet-200/400/600/800, orchid e sky.
+ * O vidro e translucido com desfoque e saturacao do que esta atras, contorno
+ * fino, brilho especular no topo e sombra suave. Opacidade calibrada para
+ * manter o texto em 4,5:1 nos dois temas.
  */
 
 :root {
-  --fundo-app:
-    radial-gradient(44rem 34rem at 6% -8%, rgb(166 143 247 / 0.55), transparent 70%),
-    radial-gradient(38rem 30rem at 102% 2%, rgb(195 142 180 / 0.45), transparent 70%),
-    radial-gradient(46rem 38rem at 84% 104%, rgb(134 168 207 / 0.5), transparent 70%),
-    radial-gradient(36rem 30rem at 34% 72%, rgb(220 211 251 / 0.75), transparent 70%),
-    linear-gradient(160deg, #f5f2fe 0%, #f5f4fa 45%, #eef1f8 100%);
+  --fundo-1: 166 143 247;
+  --fundo-2: 195 142 180;
+  --fundo-3: 134 168 207;
+  --fundo-4: 220 211 251;
+  --fundo-inicio: #f5f2fe;
+  --fundo-fim: #eef1f8;
+  --fundo-contorno: 90 63 192;
 
-  --vidro-fundo: linear-gradient(140deg, rgb(255 255 255 / 0.78), rgb(255 255 255 / 0.58));
-  --vidro-fundo-forte: linear-gradient(140deg, rgb(255 255 255 / 0.92), rgb(255 255 255 / 0.8));
-  --vidro-fundo-leve: linear-gradient(160deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.56));
-  --vidro-especular: radial-gradient(120% 70% at 0% 0%, rgb(255 255 255 / 0.65), transparent 55%);
-  --vidro-contorno: rgb(90 63 192 / 0.12);
-  --vidro-brilho: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 -1px 0 rgb(255 255 255 / 0.3);
+  --fundo-app:
+    radial-gradient(44rem 34rem at 6% -8%, rgb(var(--fundo-1) / 0.55), transparent 70%),
+    radial-gradient(38rem 30rem at 102% 2%, rgb(var(--fundo-2) / 0.45), transparent 70%),
+    radial-gradient(46rem 38rem at 84% 104%, rgb(var(--fundo-3) / 0.5), transparent 70%),
+    radial-gradient(36rem 30rem at 34% 72%, rgb(var(--fundo-4) / 0.75), transparent 70%),
+    linear-gradient(160deg, var(--fundo-inicio) 0%, var(--bg) 45%, var(--fundo-fim) 100%);
+
+  /*
+   * Vidro mais transparente, com o fundo clareado pelo proprio filtro
+   * (brightness): a cor atravessa, mas o texto mais fraco (ink-subtle) segue
+   * acima de 4,5:1 no ponto mais colorido do degrade, em todas as paletas.
+   */
+  --vidro-fundo: linear-gradient(140deg, rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.36));
+  --vidro-fundo-forte: linear-gradient(140deg, rgb(255 255 255 / 0.84), rgb(255 255 255 / 0.68));
+  --vidro-fundo-leve: linear-gradient(160deg, rgb(255 255 255 / 0.52), rgb(255 255 255 / 0.36));
+  --vidro-especular:
+    radial-gradient(120% 80% at 0% 0%, rgb(255 255 255 / 0.6), transparent 50%),
+    linear-gradient(115deg, rgb(255 255 255 / 0.22) 0%, transparent 32%);
+  --vidro-contorno: rgb(var(--fundo-contorno) / 0.12);
+  /* Borda iluminada em cima e a esquerda, base mais apagada e brilho interno: espessura. */
+  --vidro-brilho:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 1px 0 0 rgb(255 255 255 / 0.5),
+    inset 0 -1px 0 rgb(255 255 255 / 0.25),
+    inset 0 0 0 1px rgb(255 255 255 / 0.2),
+    inset 0 0 28px rgb(255 255 255 / 0.28);
   --vidro-sombra: 0 1px 2px rgb(42 35 80 / 0.04), 0 14px 36px -18px rgb(42 35 80 / 0.24);
   --vidro-sombra-flutuante: 0 2px 6px rgb(42 35 80 / 0.06), 0 24px 56px -20px rgb(42 35 80 / 0.34);
-  --vidro-desfoque: blur(22px) saturate(170%);
+  --vidro-desfoque: blur(28px) saturate(190%) brightness(1.16);
+  --vidro-desfoque-forte: blur(40px) saturate(200%) brightness(1.16);
+
+  /*
+   * Barra lateral: vidro proprio, mais translucido; borda direita so com um fio de luz.
+   * Sem brightness: atras do menu so ha o degrade liso, e e a cor dele atravessando
+   * que da a sensacao de vidro. Clarear o fundo o deixava quase branco (menu opaco).
+   */
+  --vidro-menu: linear-gradient(180deg, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0.27));
+  --vidro-menu-especular: var(--vidro-especular);
+  --vidro-menu-desfoque: blur(40px) saturate(180%);
+  --vidro-menu-brilho: inset -1px 0 0 rgb(255 255 255 / 0.4);
 }
 
 [data-theme="dark"] {
-  --fundo-app:
-    radial-gradient(44rem 34rem at 6% -8%, rgb(90 63 192 / 0.45), transparent 70%),
-    radial-gradient(38rem 30rem at 102% 2%, rgb(195 142 180 / 0.2), transparent 70%),
-    radial-gradient(46rem 38rem at 84% 104%, rgb(134 168 207 / 0.18), transparent 70%),
-    radial-gradient(36rem 30rem at 34% 72%, rgb(54 37 122 / 0.36), transparent 70%),
-    linear-gradient(160deg, #120f22 0%, #0e0d17 50%, #0c1019 100%);
+  --fundo-1: 90 63 192;
+  --fundo-2: 195 142 180;
+  --fundo-3: 134 168 207;
+  --fundo-4: 54 37 122;
+  --fundo-inicio: #120f22;
+  --fundo-fim: #0c1019;
 
-  --vidro-fundo: linear-gradient(140deg, rgb(33 31 52 / 0.74), rgb(23 22 36 / 0.58));
-  --vidro-fundo-forte: linear-gradient(140deg, rgb(33 31 52 / 0.9), rgb(23 22 36 / 0.82));
-  --vidro-fundo-leve: linear-gradient(160deg, rgb(33 31 52 / 0.6), rgb(23 22 36 / 0.42));
-  --vidro-especular: radial-gradient(120% 70% at 0% 0%, rgb(255 255 255 / 0.07), transparent 55%);
+  --fundo-app:
+    radial-gradient(44rem 34rem at 6% -8%, rgb(var(--fundo-1) / 0.45), transparent 70%),
+    radial-gradient(38rem 30rem at 102% 2%, rgb(var(--fundo-2) / 0.2), transparent 70%),
+    radial-gradient(46rem 38rem at 84% 104%, rgb(var(--fundo-3) / 0.18), transparent 70%),
+    radial-gradient(36rem 30rem at 34% 72%, rgb(var(--fundo-4) / 0.36), transparent 70%),
+    linear-gradient(160deg, var(--fundo-inicio) 0%, var(--bg) 50%, var(--fundo-fim) 100%);
+
+  /* No escuro o filtro escurece o fundo (brightness < 1), pelo mesmo motivo. */
+  --vidro-fundo: linear-gradient(140deg, rgb(33 31 52 / 0.58), rgb(23 22 36 / 0.4));
+  --vidro-fundo-forte: linear-gradient(140deg, rgb(33 31 52 / 0.8), rgb(23 22 36 / 0.68));
+  --vidro-fundo-leve: linear-gradient(160deg, rgb(33 31 52 / 0.5), rgb(23 22 36 / 0.4));
+  --vidro-especular:
+    radial-gradient(120% 80% at 0% 0%, rgb(255 255 255 / 0.08), transparent 50%),
+    linear-gradient(115deg, rgb(255 255 255 / 0.04) 0%, transparent 32%);
   --vidro-contorno: rgb(255 255 255 / 0.09);
-  --vidro-brilho: inset 0 1px 0 rgb(255 255 255 / 0.08), inset 0 -1px 0 rgb(0 0 0 / 0.25);
+  --vidro-brilho:
+    inset 0 1px 0 rgb(255 255 255 / 0.13),
+    inset 1px 0 0 rgb(255 255 255 / 0.06),
+    inset 0 -1px 0 rgb(0 0 0 / 0.3),
+    inset 0 0 28px rgb(255 255 255 / 0.03);
   --vidro-sombra: 0 16px 40px -18px rgb(0 0 0 / 0.7);
   --vidro-sombra-flutuante: 0 28px 64px -20px rgb(0 0 0 / 0.85);
+  --vidro-desfoque: blur(28px) saturate(170%) brightness(0.55);
+  --vidro-desfoque-forte: blur(40px) saturate(180%) brightness(0.55);
+
+  /*
+   * O menu fica sobre o brilho mais forte do degrade: dispensa o reflexo do canto,
+   * que cairia sobre os titulos de secao (ink-subtle). Sem brightness, pelo mesmo
+   * motivo do tema claro: escurecer o fundo apagava a cor que atravessa o vidro.
+   */
+  --vidro-menu: linear-gradient(180deg, rgb(33 31 52 / 0.38), rgb(23 22 36 / 0.28));
+  --vidro-menu-especular: linear-gradient(transparent, transparent);
+  --vidro-menu-desfoque: blur(40px) saturate(170%);
+  --vidro-menu-brilho: inset -1px 0 0 rgb(255 255 255 / 0.05);
 }
 
 /* Fundo da aplicacao: camada fixa atras de tudo. */
@@ -74,8 +134,8 @@ body::before {
   background: var(--vidro-especular), var(--vidro-fundo-forte);
   border: 1px solid var(--vidro-contorno);
   box-shadow: var(--vidro-brilho), var(--vidro-sombra-flutuante);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
-  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: var(--vidro-desfoque-forte);
+  backdrop-filter: var(--vidro-desfoque-forte);
 }
 
 /* Estado vazio: vidro mais leve, contorno tracejado. */
@@ -86,13 +146,13 @@ body::before {
   box-shadow: none;
 }
 
-/* Barra lateral: vidro leve, deixa o degrade aparecer. */
+/* Barra lateral: vidro translucido que deixa o degrade aparecer. */
 .ex-sidebar {
-  background: var(--vidro-especular), var(--vidro-fundo-leve);
+  background: var(--vidro-menu-especular), var(--vidro-menu);
   border-right: 1px solid var(--vidro-contorno);
-  box-shadow: var(--vidro-brilho);
-  -webkit-backdrop-filter: var(--vidro-desfoque);
-  backdrop-filter: var(--vidro-desfoque);
+  box-shadow: var(--vidro-menu-brilho);
+  -webkit-backdrop-filter: var(--vidro-menu-desfoque);
+  backdrop-filter: var(--vidro-menu-desfoque);
 }
 
 /* Acessibilidade e compatibilidade: superficie solida quando nao ha desfoque. */

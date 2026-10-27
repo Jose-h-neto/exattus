@@ -123,15 +123,15 @@ export function versaoDaCompetencia(competencia: string): VersaoTabelas | null {
 
 export const FONTES_OFICIAIS = [
   {
-    titulo: 'Receita Federal — Tributação de 2026',
+    titulo: 'Receita Federal: tributação de 2026',
     url: 'https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/tabelas/2026',
   },
   {
-    titulo: 'Receita Federal — Exemplos da Lei nº 15.270/2025',
+    titulo: 'Receita Federal: exemplos da Lei nº 15.270/2025',
     url: 'https://www.gov.br/receitafederal/pt-br/assuntos/meu-imposto-de-renda/tabelas/exemplos-de-aplicacao-da-lei-15-270-2025',
   },
   {
-    titulo: 'INSS — Tabela de contribuição mensal',
+    titulo: 'INSS: tabela de contribuição mensal',
     url: 'https://www.gov.br/inss/pt-br/direitos-e-deveres/inscricao-e-contribuicao/tabela-de-contribuicao-mensal',
   },
 ] as const

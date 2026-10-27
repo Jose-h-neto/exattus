@@ -1,0 +1,115 @@
+/*
+ * Exattus Temas: cinco paletas de destaque (design system "Exattus Temas").
+ * Cada paleta troca primary, primary-hover, primary-soft, on-primary e accent,
+ * e tambem o degrade do fundo (--fundo-*, usados em vidro.css). Superficies,
+ * bordas, textos e cores de status ficam iguais.
+ *
+ * Aplicar: data-palette="<id>" no <html>, ao lado de data-theme. Carregar depois
+ * do tokens.css: html[data-palette] (0,1,1) vence [data-theme="dark"] (0,1,0).
+ */
+
+:root {
+  --violeta-primary: #5a3fc0; --violeta-hover: #4a33a3; --violeta-soft: #eee9fd; --violeta-on: #ffffff; --violeta-accent: #a9679a;
+  --azul-primary: #2456c4;    --azul-hover: #1c449e;    --azul-soft: #e6eefc;    --azul-on: #ffffff;    --azul-accent: #7b61c9;
+  --rosa-primary: #b02a7c;    --rosa-hover: #8f2064;    --rosa-soft: #fbe8f3;    --rosa-on: #ffffff;    --rosa-accent: #5a62b8;
+  --petroleo-primary: #0b6a80; --petroleo-hover: #085466; --petroleo-soft: #e1f2f6; --petroleo-on: #ffffff; --petroleo-accent: #a85d86;
+  --grafite-primary: #2f3443; --grafite-hover: #1d212c; --grafite-soft: #eceef2; --grafite-on: #ffffff; --grafite-accent: #5a3fc0;
+}
+
+[data-theme="dark"] {
+  --violeta-primary: #a68ff7; --violeta-hover: #bfaefa; --violeta-soft: #2a2350; --violeta-on: #140e32; --violeta-accent: #c38eb4;
+  --azul-primary: #7fa8f5;    --azul-hover: #a3c1f8;    --azul-soft: #172848;    --azul-on: #0a1730;    --azul-accent: #b3a2f0;
+  --rosa-primary: #f08cc4;    --rosa-hover: #f6b0d8;    --rosa-soft: #3a1730;    --rosa-on: #2e0a20;    --rosa-accent: #a3aaf0;
+  --petroleo-primary: #5cc6da; --petroleo-hover: #8bd8e6; --petroleo-soft: #10303a; --petroleo-on: #05212a; --petroleo-accent: #dba1c3;
+  --grafite-primary: #d9dbe3; --grafite-hover: #f0f1f5; --grafite-soft: #2a2c38; --grafite-on: #15161c; --grafite-accent: #a68ff7;
+}
+
+html[data-palette="violeta"] { --primary: var(--violeta-primary); --primary-hover: var(--violeta-hover); --primary-soft: var(--violeta-soft); --on-primary: var(--violeta-on); --accent: var(--violeta-accent); }
+html[data-palette="azul"] { --primary: var(--azul-primary); --primary-hover: var(--azul-hover); --primary-soft: var(--azul-soft); --on-primary: var(--azul-on); --accent: var(--azul-accent); }
+html[data-palette="rosa"] { --primary: var(--rosa-primary); --primary-hover: var(--rosa-hover); --primary-soft: var(--rosa-soft); --on-primary: var(--rosa-on); --accent: var(--rosa-accent); }
+html[data-palette="petroleo"] { --primary: var(--petroleo-primary); --primary-hover: var(--petroleo-hover); --primary-soft: var(--petroleo-soft); --on-primary: var(--petroleo-on); --accent: var(--petroleo-accent); }
+html[data-palette="grafite"] { --primary: var(--grafite-primary); --primary-hover: var(--grafite-hover); --primary-soft: var(--grafite-soft); --on-primary: var(--grafite-on); --accent: var(--grafite-accent); }
+html[data-palette] {
+  --chart-1: var(--primary);
+  --chart-2: var(--accent);
+  --focus-ring: 0 0 0 2px var(--surface), 0 0 0 4px var(--primary);
+}
+
+/*
+ * Degrade do fundo por paleta (a Violeta usa os valores padrao de vidro.css).
+ * --fundo-1: brilho da cor principal (canto superior esquerdo); --fundo-2: brilho
+ * da cor de destaque (superior direito); --fundo-3: tom frio (inferior direito);
+ * --fundo-4: veu suave no centro; inicio/fim: base do degrade linear;
+ * --fundo-contorno: borda fina do vidro no tema claro. Luminosidade igual a da
+ * Violeta, para manter o contraste do texto sobre o vidro.
+ */
+html[data-palette="azul"] {
+  --fundo-1: 127 168 245; --fundo-2: 179 162 240; --fundo-3: 125 190 220; --fundo-4: 212 225 252;
+  --fundo-inicio: #f1f5fe; --fundo-fim: #edf3f8; --fundo-contorno: 36 86 196;
+}
+html[data-palette="azul"][data-theme="dark"] {
+  --fundo-1: 36 86 196; --fundo-2: 123 97 201; --fundo-3: 120 180 210; --fundo-4: 22 44 102;
+  --fundo-inicio: #0d1424; --fundo-fim: #0b111b;
+}
+html[data-palette="rosa"] {
+  --fundo-1: 240 140 196; --fundo-2: 163 170 240; --fundo-3: 196 160 214; --fundo-4: 250 214 234;
+  --fundo-inicio: #fdf2f8; --fundo-fim: #f3f0f9; --fundo-contorno: 176 42 124;
+}
+html[data-palette="rosa"][data-theme="dark"] {
+  --fundo-1: 176 42 124; --fundo-2: 90 98 184; --fundo-3: 160 130 200; --fundo-4: 92 22 66;
+  --fundo-inicio: #1b0e18; --fundo-fim: #100e19;
+}
+html[data-palette="petroleo"] {
+  --fundo-1: 92 198 218; --fundo-2: 219 161 195; --fundo-3: 134 176 214; --fundo-4: 206 236 242;
+  --fundo-inicio: #eff8fa; --fundo-fim: #eef2f7; --fundo-contorno: 11 106 128;
+}
+html[data-palette="petroleo"][data-theme="dark"] {
+  --fundo-1: 11 106 128; --fundo-2: 168 93 134; --fundo-3: 120 170 200; --fundo-4: 8 58 72;
+  --fundo-inicio: #0b171c; --fundo-fim: #0b1119;
+}
+html[data-palette="grafite"] {
+  --fundo-1: 178 184 202; --fundo-2: 196 184 240; --fundo-3: 160 174 196; --fundo-4: 226 228 236;
+  --fundo-inicio: #f4f5f8; --fundo-fim: #eff1f5; --fundo-contorno: 47 52 67;
+}
+html[data-palette="grafite"][data-theme="dark"] {
+  --fundo-1: 72 78 98; --fundo-2: 120 100 200; --fundo-3: 120 136 166; --fundo-4: 38 41 54;
+  --fundo-inicio: #111218; --fundo-fim: #0d0f14;
+}
+
+/* Seletor de paleta (ExThemePicker): cartoes com miniatura da navegacao e de um grafico. */
+.ex-palette--violeta { --p: var(--violeta-primary); --p-soft: var(--violeta-soft); --p-on: var(--violeta-on); --p-accent: var(--violeta-accent); }
+.ex-palette--azul { --p: var(--azul-primary); --p-soft: var(--azul-soft); --p-on: var(--azul-on); --p-accent: var(--azul-accent); }
+.ex-palette--rosa { --p: var(--rosa-primary); --p-soft: var(--rosa-soft); --p-on: var(--rosa-on); --p-accent: var(--rosa-accent); }
+.ex-palette--petroleo { --p: var(--petroleo-primary); --p-soft: var(--petroleo-soft); --p-on: var(--petroleo-on); --p-accent: var(--petroleo-accent); }
+.ex-palette--grafite { --p: var(--grafite-primary); --p-soft: var(--grafite-soft); --p-on: var(--grafite-on); --p-accent: var(--grafite-accent); }
+.ex-palettes { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 12px; }
+.ex-palette {
+  display: flex; flex-direction: column; gap: 10px; padding: 10px; box-sizing: border-box; min-width: 0;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius-lg);
+  font: inherit; color: var(--ink); text-align: left; cursor: pointer; outline: none;
+  transition: border-color .14s ease-out, box-shadow .14s ease-out;
+}
+.ex-palette:hover { border-color: var(--ink-muted); }
+.ex-palette[aria-checked="true"] { border-color: var(--p); box-shadow: 0 0 0 1px var(--p); }
+.ex-palette:focus-visible { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--p); }
+.ex-palette__mock { display: flex; gap: 6px; height: 72px; padding: 8px; box-sizing: border-box; border-radius: var(--radius-md); background: var(--bg); overflow: hidden; }
+.ex-palette__nav { display: flex; flex-direction: column; gap: 4px; width: 38%; }
+.ex-palette__nav span { height: 10px; border-radius: 4px; background: var(--line); }
+.ex-palette__nav span:first-child { background: var(--p-soft); box-shadow: inset 3px 0 0 var(--p); }
+.ex-palette__body { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+.ex-palette__bars { flex: 1; display: flex; align-items: flex-end; gap: 3px; }
+.ex-palette__bars i { flex: 1; border-radius: 2px 2px 0 0; background: var(--p); }
+.ex-palette__bars i:nth-child(even) { background: var(--p-accent); }
+.ex-palette__btn { align-self: flex-end; width: 44px; height: 12px; border-radius: var(--radius-full); background: var(--p); }
+.ex-palette__foot { display: flex; align-items: center; gap: 8px; }
+.ex-palette__name { flex: 1; min-width: 0; font: 600 14px/20px var(--font-sans); }
+.ex-palette__tag { font: 500 12px/16px var(--font-sans); color: var(--ink-muted); }
+.ex-palette__check { display: grid; place-items: center; flex: none; width: 18px; height: 18px; box-sizing: border-box; border: 1.5px solid var(--line); border-radius: var(--radius-full); color: transparent; }
+.ex-palette[aria-checked="true"] .ex-palette__check { background: var(--p); border-color: var(--p); color: var(--p-on); }
+
+/* Variante compacta (painel de Aparencia do menu lateral): miniatura mais baixa. */
+.ex-palettes--compacto { gap: 8px; }
+.ex-palettes--compacto .ex-palette { gap: 8px; padding: 8px; border-radius: var(--radius-md); }
+.ex-palettes--compacto .ex-palette__mock { height: 52px; padding: 6px; border-radius: var(--radius-sm); }
+.ex-palettes--compacto .ex-palette__nav span { height: 8px; }
+.ex-palettes--compacto .ex-palette__btn { height: 9px; width: 36px; }

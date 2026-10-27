@@ -9,11 +9,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap">
     <script>
-      // Aplica o tema antes da primeira pintura (evita piscar em claro no tema escuro).
+      // Aplica tema e paleta antes da primeira pintura (evita piscar na cor errada).
       try {
         var salvo = JSON.parse(localStorage.getItem('exattus:tema'))
         var tema = salvo === 'dark' || salvo === 'light' ? salvo : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
         document.documentElement.dataset.theme = tema
+        var paleta = JSON.parse(localStorage.getItem('exattus:paleta'))
+        if (['violeta', 'azul', 'rosa', 'petroleo', 'grafite'].indexOf(paleta) >= 0) document.documentElement.dataset.palette = paleta
       } catch (erro) {}
     </script>
     <title>Exattus</title>

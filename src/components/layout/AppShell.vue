@@ -40,7 +40,20 @@ function espiar() {
 
 function pararDeEspiar() {
   window.clearTimeout(temporizador)
+  if (aparenciaAberta) return
   temporizador = window.setTimeout(() => (espiando.value = false), 250)
+}
+
+/*
+ * O painel de Aparencia fica fora do menu (no <body>): ir com o mouse ate ele
+ * nao pode recolher o menu. Ao fechar, recolhe se o mouse ja saiu do menu.
+ */
+const menu = ref<HTMLElement>()
+let aparenciaAberta = false
+
+function aoMudarAparencia(aberta: boolean) {
+  aparenciaAberta = aberta
+  if (!aberta && !menu.value?.matches(':hover')) pararDeEspiar()
 }
 
 function alternarMenu() {
@@ -115,6 +128,7 @@ watch(
     />
 
     <aside
+      ref="menu"
       class="fixed z-40 w-(--sidebar-width) overflow-hidden transition-[translate,opacity] duration-200"
       :class="[
         modo === 'flutuante'
@@ -128,7 +142,7 @@ watch(
       @mouseenter="espiar"
       @mouseleave="pararDeEspiar"
     >
-      <AppSidebar :modo="modo" @alternar="alternarMenu" @navegar="gavetaAberta = false" />
+      <AppSidebar :modo="modo" @alternar="alternarMenu" @navegar="gavetaAberta = false" @aparencia="aoMudarAparencia" />
     </aside>
 
     <Transition enter-from-class="opacity-0" leave-to-class="opacity-0">
@@ -169,7 +183,7 @@ watch(
         <span class="sr-only">Abrir menu</span>
       </button>
       <span class="flex items-center gap-2">
-        <AppLogo :tamanho="26" class="text-[#5D3BCC] dark:text-primary" />
+        <AppLogo :tamanho="26" class="text-primary" />
         <span class="text-lg font-extrabold tracking-[-0.03em] text-ink">Exattus</span>
       </span>
     </header>

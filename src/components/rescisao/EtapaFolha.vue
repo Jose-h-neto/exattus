@@ -84,7 +84,7 @@ function limpar() {
                 />
               </td>
               <td class="num pr-5 align-middle" :class="classeDiferenca(item)">
-                {{ item.diferenca === null ? '—' : `${item.diferenca > 0 ? '+' : ''}${formatarMoeda(item.diferenca)}` }}
+                {{ item.diferenca === null ? 'Não conferido' : `${item.diferenca > 0 ? '+' : ''}${formatarMoeda(item.diferenca)}` }}
               </td>
             </tr>
           </tbody>
@@ -95,7 +95,7 @@ function limpar() {
         <summary
           class="flex cursor-pointer list-none items-center justify-between px-5 py-3 text-[13px] text-ink-2 hover:bg-subtle focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden"
         >
-          <span>Verbas não devidas neste cálculo — preencha se a folha as pagou ou descontou</span>
+          <span>Verbas não devidas neste cálculo. Preencha se a folha as pagou ou descontou.</span>
           <span class="text-xs text-muted">{{ naoDevidas.length }}</span>
         </summary>
         <div class="overflow-x-auto border-t border-line">
@@ -113,7 +113,7 @@ function limpar() {
                   />
                 </td>
                 <td class="num pr-5 align-middle" :class="classeDiferenca(item)">
-                  {{ item.diferenca === null ? '—' : `${item.diferenca > 0 ? '+' : ''}${formatarMoeda(item.diferenca)}` }}
+                  {{ item.diferenca === null ? 'Não conferido' : `${item.diferenca > 0 ? '+' : ''}${formatarMoeda(item.diferenca)}` }}
                 </td>
               </tr>
             </tbody>

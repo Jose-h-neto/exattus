@@ -247,7 +247,7 @@ watch(
       <UiFormGroup titulo="Remuneração">
         <UiField id="ferias-referencia" rotulo="Funcionário ou referência" opcional class="col-span-2">
           <template #default="{ id }">
-            <UiInput :id="id" v-model="form.referencia" placeholder="Ex.: Maria — Férias 2026" autocomplete="off" />
+            <UiInput :id="id" v-model="form.referencia" autocomplete="off" />
           </template>
         </UiField>
 
@@ -466,7 +466,7 @@ watch(
                   >
                     <span class="flex items-center gap-2">
                       <UiIcon nome="seta" :tamanho="15" class="text-muted transition-transform group-open:rotate-90" />
-                      Faixas do INSS — {{ nomeCompetencia(item.chave) }}
+                      Faixas do INSS em {{ nomeCompetencia(item.chave).toLowerCase() }}
                     </span>
                     <span class="num text-muted">{{ formatarMoeda(item.inss.total) }}</span>
                   </summary>
