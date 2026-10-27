@@ -217,7 +217,7 @@ watch(
       <UiFormGroup titulo="Dados do cálculo" descricao="O salário proporcional considera sempre o mês comercial de 30 dias.">
         <UiField id="folha-referencia" rotulo="Funcionário ou referência" opcional class="col-span-2">
           <template #default="{ id }">
-            <UiInput :id="id" v-model="form.referencia" autocomplete="off" />
+            <UiInput :id="id" v-model="form.referencia" placeholder="José, junho/2026" autocomplete="off" />
           </template>
         </UiField>
 

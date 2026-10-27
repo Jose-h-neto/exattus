@@ -247,7 +247,7 @@ watch(
       <UiFormGroup titulo="Remuneração">
         <UiField id="ferias-referencia" rotulo="Funcionário ou referência" opcional class="col-span-2">
           <template #default="{ id }">
-            <UiInput :id="id" v-model="form.referencia" autocomplete="off" />
+            <UiInput :id="id" v-model="form.referencia" placeholder="Maria, férias 2026" autocomplete="off" />
           </template>
         </UiField>
 

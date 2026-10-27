@@ -40,11 +40,11 @@ const { algumaPersonalizada: personalizada } = useParametros()
 
       <button
         type="button"
-        class="ex-btn ex-btn--secondary ex-btn--sm ex-btn--icon"
+        class="ex-btn ex-btn--ghost ex-btn--sm ex-btn--icon"
         :title="modo === 'gaveta' ? botaoMenu.rotulo : `${botaoMenu.rotulo} (Ctrl+\\)`"
         @click="emit('alternar')"
       >
-        <UiIcon :nome="botaoMenu.icone" :tamanho="16" />
+        <UiIcon :nome="botaoMenu.icone" :tamanho="20" />
         <span class="ex-sr">{{ botaoMenu.rotulo }}</span>
       </button>
     </div>

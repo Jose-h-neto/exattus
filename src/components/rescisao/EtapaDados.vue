@@ -69,7 +69,7 @@ function aoMudarDesligamento() {
     <UiFormGroup titulo="Funcionário e remuneração" largo>
       <UiField id="resc-referencia" rotulo="Funcionário ou referência" opcional class="col-span-2">
         <template #default="{ id }">
-          <UiInput :id="id" v-model="form.referencia" autocomplete="off" />
+          <UiInput :id="id" v-model="form.referencia" placeholder="Ana Souza, matrícula 1042" autocomplete="off" />
         </template>
       </UiField>
 

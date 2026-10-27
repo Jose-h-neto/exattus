@@ -158,13 +158,13 @@ watch(
     <button
       v-if="modo === 'flutuante'"
       type="button"
-      class="ex-btn ex-btn--secondary ex-btn--sm fixed top-3 left-3 z-30 shadow-md"
+      class="ex-btn ex-btn--ghost ex-btn--sm vidro--flutuante fixed top-3 left-3 z-30 text-ink-2"
       title="Mostrar menu (Ctrl+\)"
       @mouseenter="espiar"
       @mouseleave="pararDeEspiar"
       @click="alternarMenu"
     >
-      <UiIcon nome="expandir" :tamanho="16" />
+      <UiIcon nome="expandir" :tamanho="18" />
       Menu
     </button>
 
