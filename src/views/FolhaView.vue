@@ -49,6 +49,13 @@ const resultado = computed(() =>
   leitura.value.entrada ? calcularFolha(leitura.value.entrada, tabelaInss.value, tabelaIrrf.value) : null,
 )
 
+/** Com horas extras, comissoes ou DSR, o resumo passa a mostrar o total de proventos. */
+const rotuloProventos = computed(() =>
+  resultado.value && resultado.value.totalProventos !== resultado.value.proporcional
+    ? 'Total de proventos'
+    : 'Salário proporcional',
+)
+
 const aba = ref('inss')
 
 const abas = computed(() => [
@@ -74,6 +81,9 @@ const linhas = computed<LinhaDemonstrativo[]>(() => {
       referencia: `${r.entrada.dias} dias`,
       provento: r.proporcional,
     },
+    ...(r.entrada.horasExtras > 0 ? [{ descricao: 'Horas extras', provento: r.entrada.horasExtras }] : []),
+    ...(r.entrada.comissoes > 0 ? [{ descricao: 'Comissões', provento: r.entrada.comissoes }] : []),
+    ...(r.entrada.dsr > 0 ? [{ descricao: 'DSR', detalhe: 'Sobre horas extras e comissões', provento: r.entrada.dsr }] : []),
     {
       descricao: r.entrada.modalidade === 'prolabore' ? 'INSS sobre pró-labore' : 'INSS',
       detalhe: r.entrada.baseInssManual !== null ? 'Base informada manualmente' : undefined,
@@ -119,8 +129,14 @@ function salvar() {
     referencia: form.referencia.trim() || 'Sem identificação',
     formulario: { ...form },
     resumo: {
-      detalhe: `${r.entrada.modalidade === 'prolabore' ? 'Pró-labore' : 'Empregado'} · ${r.entrada.dias} dias`,
-      bruto: r.proporcional,
+      detalhe: [
+        r.entrada.modalidade === 'prolabore' ? 'Pró-labore' : 'Empregado',
+        `${r.entrada.dias} dias`,
+        r.entrada.horasExtras > 0 ? 'horas extras' : '',
+        r.entrada.comissoes > 0 ? 'comissões' : '',
+        r.entrada.dsr > 0 ? 'DSR' : '',
+      ].filter(Boolean).join(' · '),
+      bruto: r.totalProventos,
       inss: r.inss.total,
       irrf: r.irrf.escolhida.irrf,
       liquido: r.liquido,
@@ -187,6 +203,44 @@ watch(
           </template>
         </UiField>
 
+        <template v-if="form.modalidade === 'empregado'">
+          <UiField
+            id="folha-horas-extras"
+            rotulo="Horas extras"
+            opcional
+            ajuda="Valor total do mês, somado ao salário. Não é proporcionalizado pelos dias trabalhados."
+            :erro="erros.horasExtras"
+          >
+            <template #default="{ id, descricao, invalido }">
+              <UiMoneyInput :id="id" v-model="form.horasExtras" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
+            </template>
+          </UiField>
+
+          <UiField
+            id="folha-comissoes"
+            rotulo="Comissões"
+            opcional
+            ajuda="Valor total do mês, somado ao salário. Não é proporcionalizado pelos dias trabalhados."
+            :erro="erros.comissoes"
+          >
+            <template #default="{ id, descricao, invalido }">
+              <UiMoneyInput :id="id" v-model="form.comissoes" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
+            </template>
+          </UiField>
+
+          <UiField
+            id="folha-dsr"
+            rotulo="DSR"
+            opcional
+            ajuda="Descanso semanal remunerado sobre horas extras e comissões, como consta no holerite."
+            :erro="erros.dsr"
+          >
+            <template #default="{ id, descricao, invalido }">
+              <UiMoneyInput :id="id" v-model="form.dsr" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
+            </template>
+          </UiField>
+        </template>
+
         <UiField id="folha-dependentes" rotulo="Dependentes (IRRF)" :erro="erros.dependentes">
           <template #default="{ id, descricao, invalido }">
             <UiInput :id="id" v-model="form.dependentes" type="number" min="0" max="99" step="1" :invalido="invalido" :aria-describedby="descricao" />
@@ -203,12 +257,12 @@ watch(
           id="folha-base-inss"
           rotulo="Base do INSS"
           opcional
-          ajuda="Quando diferente do salário proporcional."
+          ajuda="Quando diferente do total de proventos (salário proporcional + horas extras + comissões + DSR)."
           :erro="erros.baseInssManual"
           class="col-span-2"
         >
           <template #default="{ id, descricao, invalido }">
-            <UiMoneyInput :id="id" v-model="form.baseInssManual" placeholder="Salário proporcional" :invalido="invalido" :aria-describedby="descricao" />
+            <UiMoneyInput :id="id" v-model="form.baseInssManual" placeholder="Total de proventos" :invalido="invalido" :aria-describedby="descricao" />
           </template>
         </UiField>
 
@@ -237,7 +291,7 @@ watch(
       <template v-else>
         <ResumoValores
           :itens="[
-            { rotulo: 'Salário proporcional', valor: resultado.proporcional },
+            { rotulo: rotuloProventos, valor: resultado.totalProventos },
             { rotulo: 'INSS', valor: resultado.inss.total, sinal: '-' },
             { rotulo: 'IRRF', valor: resultado.irrf.escolhida.irrf, sinal: '-' },
             { rotulo: 'Valor líquido', valor: resultado.liquido, destaque: true },
@@ -251,7 +305,7 @@ watch(
 
         <Demonstrativo
           :linhas="linhas"
-          :total-proventos="resultado.proporcional"
+          :total-proventos="resultado.totalProventos"
           :total-descontos="resultado.totalDescontos"
           :liquido="resultado.liquido"
           :subtitulo="form.referencia.trim() || undefined"
@@ -269,7 +323,7 @@ watch(
             <template #default="{ ativa }">
               <div class="p-5">
                 <MemoriaInss v-if="ativa === 'inss'" :resultado="resultado.inss" />
-                <MemoriaIrrf v-else :irrf="resultado.irrf" rotulo-rendimento="Salário proporcional" />
+                <MemoriaIrrf v-else :irrf="resultado.irrf" :rotulo-rendimento="rotuloProventos" />
               </div>
             </template>
           </UiTabs>

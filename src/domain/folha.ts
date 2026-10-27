@@ -8,8 +8,14 @@ export interface EntradaFolha {
   salario: number
   /** Dias trabalhados no mes comercial de 30 dias. */
   dias: number
+  /** Valor das horas extras do mes, nao proporcionalizado pelos dias. */
+  horasExtras: number
+  /** Valor das comissoes do mes, nao proporcionalizado pelos dias. */
+  comissoes: number
+  /** DSR sobre horas extras e comissoes, como consta no holerite. */
+  dsr: number
   dependentes: number
-  /** Base do INSS diferente do salario proporcional. */
+  /** Base do INSS diferente do total de proventos. */
   baseInssManual: number | null
   inssInformado: number | null
   irrfInformado: number | null
@@ -27,6 +33,8 @@ export interface ResultadoFolha {
   /** Valor-dia em centavos fracionarios (salario / 30). */
   valorDia: number
   proporcional: number
+  /** Salario proporcional + horas extras + comissoes + DSR: base do INSS e do IRRF. */
+  totalProventos: number
   baseInss: number
   inss: ResultadoInss
   irrf: ResultadoIrrf
@@ -46,11 +54,12 @@ export function calcularFolha(
   tabelaIrrf: Readonly<TabelaIrrf> = IRRF_2026,
 ): ResultadoFolha {
   const proporcional = dividirArredondando(entrada.salario * entrada.dias, 30)
-  const baseInss = entrada.baseInssManual ?? proporcional
+  const totalProventos = proporcional + entrada.horasExtras + entrada.comissoes + entrada.dsr
+  const baseInss = entrada.baseInssManual ?? totalProventos
   const inss = calcularInss(baseInss, tabela, entrada.modalidade)
 
   const irrf = calcularIrrf({
-    rendimento: proporcional,
+    rendimento: totalProventos,
     inss: inss.total,
     dependentes: entrada.dependentes,
   }, { tabela: tabelaIrrf })
@@ -61,11 +70,12 @@ export function calcularFolha(
     entrada,
     valorDia: entrada.salario / 30,
     proporcional,
+    totalProventos,
     baseInss,
     inss,
     irrf,
     totalDescontos,
-    liquido: proporcional - totalDescontos,
+    liquido: totalProventos - totalDescontos,
     conferenciaInss: conferir(inss.total, entrada.inssInformado),
     conferenciaIrrf: conferir(irrf.escolhida.irrf, entrada.irrfInformado),
   }

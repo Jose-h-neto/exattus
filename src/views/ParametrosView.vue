@@ -540,6 +540,7 @@ const reducao = REDUCAO_2026
           <div v-for="regra in [
             ['Arredondamento', 'Todos os valores são calculados em centavos inteiros, com arredondamento a cada faixa.'],
             ['Salário proporcional', 'Salário bruto ÷ 30 × dias trabalhados; o mês é sempre considerado com 30 dias.'],
+            ['Horas extras, comissões e DSR', 'Somados ao salário proporcional pelo valor informado, sem proporcionalizar pelos dias. Integram as bases do INSS e do IRRF da folha mensal.'],
             ['INSS do empregado', 'Progressivo por faixas até o teto. Faixas completas usam o valor fixo da tabela, quando informado.'],
             ['INSS do pró-labore', 'Alíquota única sobre a base, limitada ao teto de contribuição.'],
             ['Modelo do IRRF', 'O sistema calcula pelas deduções legais (INSS + dependentes) e pelo desconto simplificado e adota o menor imposto.'],

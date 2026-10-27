@@ -20,7 +20,7 @@ export const NAVEGACAO: GrupoNavegacao[] = [
       {
         rota: 'folha',
         rotulo: 'Folha mensal',
-        descricao: 'Salário proporcional, INSS, IRRF e conferência do holerite.',
+        descricao: 'Salário proporcional, horas extras, comissões, DSR, INSS, IRRF e conferência do holerite.',
         icone: 'folha',
       },
       {
