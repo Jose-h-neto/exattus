@@ -29,7 +29,7 @@ function mudar(novo: number) {
   <TabGroup :selected-index="indice" @change="mudar">
     <div class="px-5 pt-1">
       <!-- display em linha inteira: o ex-tabs (inline-flex) limitaria o traco inferior a largura das abas -->
-      <TabList class="ex-tabs ex-tabs--line overflow-x-auto" style="display: flex" :aria-label="rotulo">
+      <TabList class="ex-tabs ex-tabs--line abas-linha" style="display: flex" :aria-label="rotulo">
         <Tab v-for="aba in abas" :key="aba.id" class="ex-tab">
           {{ aba.rotulo }}<span v-if="aba.contador !== undefined" class="ex-tab__count">{{ aba.contador }}</span>
         </Tab>

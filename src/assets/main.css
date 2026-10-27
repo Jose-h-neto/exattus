@@ -181,3 +181,36 @@
   align-self: end;
   margin-bottom: calc(16px + 6px + (var(--control-md) - 20px) / 2);
 }
+
+/*
+ * Abas em linha com rolagem horizontal (UiTabs). overflow-x: auto liga tambem a
+ * rolagem vertical, e o traco da aba ativa do design system (bottom: -1px, para
+ * cobrir a borda) passava 1px da lista: no Windows aparecia uma barra de rolagem
+ * vertical com setas. A linha de baixo vira fundo da lista, o traco fica dentro
+ * da aba e o contorno de foco vai para dentro, para nao ser cortado. As abas
+ * ganham 6px de respiro lateral (compensados no gap e na margem, o texto fica
+ * no mesmo lugar) para o contorno nao encostar no texto nem cobrir o traco.
+ */
+.abas-linha {
+  overflow-x: auto;
+  overflow-y: hidden;
+  gap: calc(var(--space-6) - 12px);
+  margin-inline: -6px;
+  border-bottom: 0;
+  /* Linha de baixo sem os 6px de cada lado da margem negativa. */
+  background: linear-gradient(var(--line), var(--line)) 6px 100% / calc(100% - 12px) 1px no-repeat;
+}
+
+.abas-linha .ex-tab {
+  padding-inline: 6px;
+}
+
+.abas-linha .ex-tab[aria-selected="true"]::after {
+  bottom: 0;
+  left: 6px;
+  right: 6px;
+}
+
+.abas-linha .ex-tab:focus-visible {
+  outline-offset: -4px;
+}
