@@ -19,6 +19,7 @@ import {
   etapaDoCampo,
   formularioRescisao as form,
   formularioRescisaoPadrao,
+  restaurarFormularioRescisao,
   ROTULOS_PENDENTES,
 } from '@/features/rescisao'
 import { calculoRescisao, conferenciaRescisao, folhaInformada, leituraRescisao } from '@/features/rescisaoEstado'
@@ -94,7 +95,10 @@ const conteudo = ref<HTMLElement | null>(null)
 const IDS_CAMPOS: Record<string, string> = {
   salario: 'resc-salario',
   adicionais: 'resc-adicionais',
-  medias: 'resc-medias',
+  mediaUnica: 'resc-medias',
+  mediasFerias: 'resc-medias-ferias',
+  mediasDecimo: 'resc-medias-decimo',
+  mediasAviso: 'resc-medias-aviso',
   dependentes: 'resc-dependentes',
   admissao: 'resc-admissao',
   fimContrato: 'resc-fim-contrato',
@@ -202,7 +206,7 @@ watch(
     const salva = conferencias.obter(id)
 
     if (salva?.tipo === 'rescisao') {
-      Object.assign(form, formularioRescisaoPadrao(), JSON.parse(JSON.stringify(salva.formulario)))
+      Object.assign(form, formularioRescisaoPadrao(), restaurarFormularioRescisao(salva.formulario))
       ativa.value = 'calculo'
       avisar(`Conferência "${salva.referencia}" carregada.`, 'info')
     }

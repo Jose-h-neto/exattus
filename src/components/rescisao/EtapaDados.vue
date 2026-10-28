@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick } from 'vue'
 
 import UiField from '@/components/ui/UiField.vue'
 import UiFormGroup from '@/components/ui/UiFormGroup.vue'
@@ -15,11 +15,14 @@ import { ROTULOS_CONTRATO_CURTOS, type TipoContrato } from '@/domain/rescisao/mo
 import { periodosAquisitivos } from '@/domain/rescisao/tempo'
 import {
   ajustarModalidade,
+  definirModoMedias,
   formularioRescisao as form,
   sincronizarPeriodos,
   sugerirPagamento,
+  type ModoMedias,
 } from '@/features/rescisao'
 import { leituraRescisao } from '@/features/rescisaoEstado'
+import { focarCampo } from '@/lib/teclado'
 
 const erros = computed(() => leituraRescisao.value.erros)
 
@@ -29,6 +32,41 @@ const contratos = (Object.keys(ROTULOS_CONTRATO_CURTOS) as TipoContrato[]).map((
 }))
 
 const contratoAPrazo = computed(() => form.tipoContrato !== 'indeterminado')
+
+/*
+ * Medias variaveis: um campo so no caso comum (Unica); "Por verba" abre uma media
+ * para cada verba, com o nome da verba dentro do campo (sem linha extra de rotulos,
+ * alinhado aos campos vizinhos). Mesmo padrao do "Valor | Horas" da folha.
+ */
+const modosMedias: { valor: ModoMedias; rotulo: string }[] = [
+  { valor: 'unica', rotulo: 'Única' },
+  { valor: 'por_verba', rotulo: 'Por verba' },
+]
+
+const MEDIAS = [
+  { campo: 'mediasFerias', id: 'resc-medias-ferias', prefixo: 'Férias', rotulo: 'Médias de férias' },
+  { campo: 'mediasDecimo', id: 'resc-medias-decimo', prefixo: '13º', rotulo: 'Médias de 13º' },
+  { campo: 'mediasAviso', id: 'resc-medias-aviso', prefixo: 'Aviso', rotulo: 'Médias do aviso' },
+] as const
+
+const porVerba = computed(() => form.mediasModo === 'por_verba')
+
+/** Ao abrir "Por verba", o cursor vai para o 13º, em geral o primeiro a diferir. */
+const modoMedias = computed({
+  get: () => form.mediasModo,
+  set: async (modo: ModoMedias) => {
+    definirModoMedias(form, modo)
+
+    if (modo === 'por_verba') {
+      await nextTick()
+      focarCampo(document.getElementById('resc-medias-decimo'))
+    }
+  },
+})
+
+const erroMedias = computed(() =>
+  porVerba.value ? MEDIAS.map((media) => erros.value[media.campo]).find(Boolean) : erros.value.mediaUnica,
+)
 
 /** Periodos completos com datas, para a tabela do historico de ferias. */
 const periodos = computed(() => {
@@ -88,8 +126,7 @@ function aoMudarDesligamento() {
       <UiField
         id="resc-adicionais"
         rotulo="Adicionais fixos"
-        opcional
-        ajuda="Adicionais mensais que integram a remuneração: insalubridade, periculosidade, gratificações fixas. Entram no saldo, no aviso, no 13º e nas férias."
+        ajuda="Opcional. Adicionais mensais que integram a remuneração: insalubridade, periculosidade, gratificações fixas. Entram no saldo, no aviso, no 13º e nas férias."
         :erro="erros.adicionais"
       >
         <template #default="{ id, descricao, invalido }">
@@ -97,15 +134,46 @@ function aoMudarDesligamento() {
         </template>
       </UiField>
 
+      <!-- Grade interna com o mesmo espacamento da externa: os campos caem nas colunas do formulario. -->
       <UiField
         id="resc-medias"
         rotulo="Médias variáveis"
-        opcional
-        ajuda="Média mensal de horas extras, comissões e adicionais variáveis habituais. Integra aviso indenizado, 13º e férias."
-        :erro="erros.medias"
+        :grupo="porVerba"
+        ajuda="Opcional. Média mensal de horas extras, comissões e variáveis habituais. Única: o mesmo valor entra nas férias, no 13º e no aviso prévio indenizado. Por verba: uma média para cada, quando os períodos de apuração geram valores diferentes (período aquisitivo nas férias, ano civil no 13º, últimos meses no aviso)."
+        :erro="erroMedias"
+        class="col-span-2 lg:col-span-3"
       >
+        <template #acao>
+          <UiSegmented v-model="modoMedias" compacto nome="resc-medias-modo" rotulo="Forma de informar as médias" :opcoes="modosMedias" />
+        </template>
         <template #default="{ id, descricao, invalido }">
-          <UiMoneyInput :id="id" v-model="form.medias" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
+          <div
+            class="grid grid-cols-2 gap-x-4 gap-y-2 lg:grid-cols-3"
+            :role="porVerba ? 'group' : undefined"
+            :aria-labelledby="porVerba ? `${id}-rotulo` : undefined"
+          >
+            <UiMoneyInput
+              v-if="!porVerba"
+              :id="id"
+              v-model="form.mediaUnica"
+              placeholder="0,00"
+              :invalido="invalido"
+              :aria-describedby="descricao"
+            />
+            <template v-else>
+              <UiMoneyInput
+                v-for="media in MEDIAS"
+                :id="media.id"
+                :key="media.campo"
+                v-model="form[media.campo]"
+                :prefixo="media.prefixo"
+                placeholder="0,00"
+                :aria-label="media.rotulo"
+                :invalido="Boolean(erros[media.campo])"
+                :aria-describedby="erros[media.campo] ? descricao : undefined"
+              />
+            </template>
+          </div>
         </template>
       </UiField>
     </UiFormGroup>

@@ -49,8 +49,16 @@ export interface EntradaRescisao {
   salario: number
   /** Adicionais fixos mensais que integram a remuneracao. */
   adicionais: number
-  /** Media mensal das verbas variaveis (horas extras, comissoes). */
-  medias: number
+  /*
+   * Medias mensais das verbas variaveis (horas extras, comissoes), uma por verba:
+   * cada verba tem o seu periodo de apuracao (aquisitivo, ano civil, ultimos meses).
+   */
+  /** Integra as ferias vencidas, proporcionais e sobre o aviso (e o 1/3). */
+  mediasFerias: number
+  /** Integra o 13o proporcional e o 13o sobre o aviso. */
+  mediasDecimo: number
+  /** Gera as medias sobre o aviso indenizado e integra as indenizacoes dos arts. 479/480. */
+  mediasAviso: number
   /** Variaveis apuradas no proprio mes do desligamento. */
   variaveisMes: number
   /** Faltas injustificadas no mes do desligamento, em dias. */
@@ -242,8 +250,16 @@ export function calcularRescisao(
   const versaoInss = versaoPara(entrada.desligamento, configuracao, 'INSS')
   const versaoIrrf = versaoPara(entrada.pagamento, configuracao, 'IRRF')
 
+  // Cada verba soma ao salario e aos adicionais a sua propria media.
   const remuneracaoFixa = entrada.salario + entrada.adicionais
-  const remuneracao = remuneracaoFixa + entrada.medias
+  const remuneracaoFerias = remuneracaoFixa + entrada.mediasFerias
+  const remuneracaoDecimo = remuneracaoFixa + entrada.mediasDecimo
+  const remuneracaoAviso = remuneracaoFixa + entrada.mediasAviso
+  const composicao = (rotulo: string, total: number, rotuloMedias: string, medias: number) =>
+    `${rotulo} ${m(total)} = salário ${m(entrada.salario)} + adicionais ${m(entrada.adicionais)} + ${rotuloMedias} ${m(medias)}`
+  const memoriaFerias = composicao('Remuneração de férias', remuneracaoFerias, 'médias de férias', entrada.mediasFerias)
+  const memoriaDecimo = composicao('Remuneração do 13º', remuneracaoDecimo, 'médias de 13º', entrada.mediasDecimo)
+  const memoriaAviso = composicao('Remuneração', remuneracaoAviso, 'médias do aviso', entrada.mediasAviso)
 
   const proventos: Rubrica[] = []
   const descontos: Rubrica[] = []
@@ -332,9 +348,9 @@ export function calcularRescisao(
 
     lancar(
       'medias_aviso',
-      proporcional(entrada.medias, diasAvisoIndenizados, 30, fatorAviso),
+      proporcional(entrada.mediasAviso, diasAvisoIndenizados, 30, fatorAviso),
       `${diasAvisoIndenizados} dias`,
-      [`Médias ${m(entrada.medias)} ÷ 30 × ${diasAvisoIndenizados}${textoFator(fatorAviso)}`],
+      [`Médias do aviso ${m(entrada.mediasAviso)} ÷ 30 × ${diasAvisoIndenizados}${textoFator(fatorAviso)}`],
     )
   }
 
@@ -377,21 +393,21 @@ export function calcularRescisao(
   let totalDecimo = 0
 
   if (modalidade.decimo > 0) {
-    const real = proporcional(remuneracao, avosDecimoReal, 12, modalidade.decimo)
-    const projetado = proporcional(remuneracao, avosDecimoProjetado - avosDecimoReal, 12, modalidade.decimo)
-    const memoriaRemuneracao = `Remuneração ${m(remuneracao)} (salário + adicionais + médias)`
+    const real = proporcional(remuneracaoDecimo, avosDecimoReal, 12, modalidade.decimo)
+    const projetado = proporcional(remuneracaoDecimo, avosDecimoProjetado - avosDecimoReal, 12, modalidade.decimo)
 
     totalDecimo = real + projetado
 
     lancar('decimo_proporcional', real, `${avosDecimoReal}/12`, [
-      memoriaRemuneracao,
+      memoriaDecimo,
       `${avosDecimoReal} avos em ${ano} até ${formatarData(entrada.desligamento)} (meses com 15 dias ou mais)`,
-      `${m(remuneracao)} ÷ 12 × ${avosDecimoReal}${textoFator(modalidade.decimo)}`,
+      `${m(remuneracaoDecimo)} ÷ 12 × ${avosDecimoReal}${textoFator(modalidade.decimo)}`,
     ])
 
     lancar('decimo_aviso', projetado, `${avosDecimoProjetado - avosDecimoReal}/12`, [
+      memoriaDecimo,
       `Avos adicionais pela projeção até ${formatarData(dataProjetada)}: ${avosDecimoProjetado - avosDecimoReal}`,
-      `${m(remuneracao)} ÷ 12 × ${avosDecimoProjetado - avosDecimoReal}${textoFator(modalidade.decimo)}`,
+      `${m(remuneracaoDecimo)} ÷ 12 × ${avosDecimoProjetado - avosDecimoReal}${textoFator(modalidade.decimo)}`,
     ])
   }
 
@@ -438,13 +454,13 @@ export function calcularRescisao(
     }
 
     const dias = diasDeFeriasPorFaltas(informado.faltas)
-    const valor = proporcional(remuneracao, dias, 30)
+    const valor = proporcional(remuneracaoFerias, dias, 30)
     const dobro = regras.feriasEmDobro && periodo.fimConcessivo < entrada.desligamento
     const intervalo = `${formatarData(periodo.inicio)} a ${formatarData(periodo.fim)}`
 
     feriasVencidas += valor
     memoriaVencidas.push(
-      `Período ${periodo.numero} (${intervalo}): ${informado.faltas} faltas → ${dias} dias; ${m(remuneracao)} ÷ 30 × ${dias} = ${m(valor)}`,
+      `Período ${periodo.numero} (${intervalo}): ${informado.faltas} faltas → ${dias} dias; ${m(remuneracaoFerias)} ÷ 30 × ${dias} = ${m(valor)}`,
     )
 
     if (dobro) {
@@ -493,22 +509,24 @@ export function calcularRescisao(
   if (modalidade.feriasProporcionais > 0 && periodoAtual) {
     const fator = modalidade.feriasProporcionais
 
-    feriasProporcionais = proporcional(remuneracao, diasFeriasDireito * avosFeriasReal, 360, fator)
-    feriasAviso = proporcional(remuneracao, diasFeriasDireito * (avosFeriasProjetado - avosFeriasReal), 360, fator)
+    feriasProporcionais = proporcional(remuneracaoFerias, diasFeriasDireito * avosFeriasReal, 360, fator)
+    feriasAviso = proporcional(remuneracaoFerias, diasFeriasDireito * (avosFeriasProjetado - avosFeriasReal), 360, fator)
 
     lancar('ferias_proporcionais', feriasProporcionais, `${avosFeriasReal}/12`, [
+      memoriaFerias,
       `Período em curso desde ${formatarData(periodoAtual.inicio)}: ${avosFeriasReal} avos até ${formatarData(entrada.desligamento)} (fração de 15 dias conta 1 avo)`,
       `${entrada.faltasPeriodoAtual} faltas no período → direito a ${diasFeriasDireito} dias`,
-      `${m(remuneracao)} ÷ 30 × ${diasFeriasDireito} ÷ 12 × ${avosFeriasReal}${textoFator(fator)}`,
+      `${m(remuneracaoFerias)} ÷ 30 × ${diasFeriasDireito} ÷ 12 × ${avosFeriasReal}${textoFator(fator)}`,
     ])
 
     lancar('ferias_aviso', feriasAviso, `${avosFeriasProjetado - avosFeriasReal}/12`, [
+      memoriaFerias,
       `Avos adicionais pela projeção até ${formatarData(dataProjetada)}: ${avosFeriasProjetado - avosFeriasReal}`,
-      `${m(remuneracao)} ÷ 30 × ${diasFeriasDireito} ÷ 12 × ${avosFeriasProjetado - avosFeriasReal}${textoFator(fator)}`,
+      `${m(remuneracaoFerias)} ÷ 30 × ${diasFeriasDireito} ÷ 12 × ${avosFeriasProjetado - avosFeriasReal}${textoFator(fator)}`,
     ])
   }
 
-  lancar('ferias_vencidas', feriasVencidas, `${memoriaVencidas.length} período(s)`, memoriaVencidas)
+  lancar('ferias_vencidas', feriasVencidas, `${memoriaVencidas.length} período(s)`, [memoriaFerias, ...memoriaVencidas])
 
   const baseTerco = feriasVencidas + feriasProporcionais + feriasAviso
 
@@ -522,10 +540,11 @@ export function calcularRescisao(
 
   if (contratoAPrazo && entrada.fimContrato) {
     const diasRestantes = Math.max(diasInclusivos(entrada.desligamento, entrada.fimContrato) - 1, 0)
-    const limite = proporcional(remuneracao, diasRestantes, 60)
+    const limite = proporcional(remuneracaoAviso, diasRestantes, 60)
     const memoria = [
+      memoriaAviso,
       `Término previsto em ${formatarData(entrada.fimContrato)}: ${diasRestantes} dias restantes`,
-      `${m(remuneracao)} ÷ 30 × ${diasRestantes} × 50%`,
+      `${m(remuneracaoAviso)} ÷ 30 × ${diasRestantes} × 50%`,
     ]
 
     if (modalidade.indenizacao479) {
@@ -579,6 +598,22 @@ export function calcularRescisao(
     alertas.push(
       `Pagamento após ${formatarData(prazoPagamento)} (10 dias do término): avalie a multa do art. 477, § 8º.`,
     )
+  }
+
+  /* Medias informadas sem verba correspondente ----------------------- */
+
+  const lancada = (...codigos: CodigoRubrica[]) => proventos.some((item) => codigos.includes(item.codigo as CodigoRubrica))
+
+  if (entrada.mediasFerias > 0 && !lancada('ferias_vencidas', 'ferias_proporcionais', 'ferias_aviso')) {
+    alertas.push('As médias de férias não foram usadas: não há férias a pagar nesta rescisão.')
+  }
+
+  if (entrada.mediasDecimo > 0 && !lancada('decimo_proporcional', 'decimo_aviso')) {
+    alertas.push('As médias de 13º não foram usadas: não há 13º a pagar nesta rescisão.')
+  }
+
+  if (entrada.mediasAviso > 0 && !lancada('medias_aviso', 'indenizacao_479', 'indenizacao_480')) {
+    alertas.push('As médias do aviso não foram usadas: não há aviso prévio indenizado nesta rescisão.')
   }
 
   /* Bases de calculo -------------------------------------------------- */
