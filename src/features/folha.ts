@@ -36,6 +36,8 @@ export interface FormularioFolha {
   comissoes: string
   dsr: string
   dependentes: string
+  adiantamentoSalarial: string
+  adiantamentoFerias: string
   baseInssManual: string
   inssInformado: string
   irrfInformado: string
@@ -80,6 +82,8 @@ export function formularioFolhaPadrao(): FormularioFolha {
     comissoes: '',
     dsr: '',
     dependentes: '0',
+    adiantamentoSalarial: '',
+    adiantamentoFerias: '',
     baseInssManual: '',
     inssInformado: '',
     irrfInformado: '',
@@ -212,6 +216,10 @@ export function interpretarFolha(formulario: FormularioFolha) {
   const comissoes = empregado ? valorAdicional(formulario.comissoes, erros, 'comissoes') : 0
   const dsr = empregado ? valorAdicional(formulario.dsr, erros, 'dsr') : 0
 
+  // Adiantamentos: descontados depois dos tributos. Pro-labore nao tem ferias.
+  const adiantamentoSalarial = valorAdicional(formulario.adiantamentoSalarial, erros, 'adiantamentoSalarial')
+  const adiantamentoFerias = empregado ? valorAdicional(formulario.adiantamentoFerias, erros, 'adiantamentoFerias') : 0
+
   const baseInssManual = valorOpcional(formulario.baseInssManual, erros, 'baseInssManual', 'Informe uma base válida.')
   const inssInformado = valorOpcional(formulario.inssInformado, erros, 'inssInformado', 'Informe um valor válido.')
   const irrfInformado = valorOpcional(formulario.irrfInformado, erros, 'irrfInformado', 'Informe um valor válido.')
@@ -229,6 +237,8 @@ export function interpretarFolha(formulario: FormularioFolha) {
         comissoes,
         dsr,
         dependentes: dependentes as number,
+        adiantamentoSalarial,
+        adiantamentoFerias,
         baseInssManual,
         inssInformado,
         irrfInformado,

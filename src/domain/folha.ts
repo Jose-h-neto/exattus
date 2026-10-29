@@ -15,6 +15,10 @@ export interface EntradaFolha {
   /** DSR sobre horas extras e comissoes, como consta no holerite. */
   dsr: number
   dependentes: number
+  /** Adiantamento salarial (vale): descontado do liquido, depois do INSS e do IRRF. */
+  adiantamentoSalarial: number
+  /** Liquido de ferias pago antecipadamente: descontado do liquido, depois do INSS e do IRRF. */
+  adiantamentoFerias: number
   /** Base do INSS diferente do total de proventos. */
   baseInssManual: number | null
   inssInformado: number | null
@@ -38,6 +42,9 @@ export interface ResultadoFolha {
   baseInss: number
   inss: ResultadoInss
   irrf: ResultadoIrrf
+  /** Adiantamentos (salarial + ferias): fora das bases, so reduzem o liquido. */
+  adiantamentos: number
+  /** INSS + IRRF + adiantamentos. */
   totalDescontos: number
   liquido: number
   conferenciaInss: Conferencia | null
@@ -64,7 +71,9 @@ export function calcularFolha(
     dependentes: entrada.dependentes,
   }, { tabela: tabelaIrrf })
 
-  const totalDescontos = inss.total + irrf.escolhida.irrf
+  // Adiantamentos entram depois dos tributos: nao alteram as bases do INSS e do IRRF.
+  const adiantamentos = entrada.adiantamentoSalarial + entrada.adiantamentoFerias
+  const totalDescontos = inss.total + irrf.escolhida.irrf + adiantamentos
 
   return {
     entrada,
@@ -74,6 +83,7 @@ export function calcularFolha(
     baseInss,
     inss,
     irrf,
+    adiantamentos,
     totalDescontos,
     liquido: totalProventos - totalDescontos,
     conferenciaInss: conferir(inss.total, entrada.inssInformado),

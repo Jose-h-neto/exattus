@@ -83,7 +83,6 @@ const periodos = computed(() => {
 const temPagamentosAnteriores = computed(() =>
   Boolean(
     form.adiantamentoDecimo ||
-      form.saldoFgts ||
       form.folhaRendimentos ||
       form.folhaInss ||
       form.folhaIrrf ||
@@ -125,8 +124,8 @@ function aoMudarDesligamento() {
 
       <UiField
         id="resc-adicionais"
-        rotulo="Adicionais fixos"
-        ajuda="Opcional. Adicionais mensais que integram a remuneração: insalubridade, periculosidade, gratificações fixas. Entram no saldo, no aviso, no 13º e nas férias."
+        rotulo="Insalubridade"
+        ajuda="Opcional. Valor mensal da insalubridade. Use também para periculosidade, gratificações e outros adicionais fixos, somando os valores. Soma-se ao salário e entra nas bases de INSS, IRRF e FGTS: saldo de salário, aviso, 13º e férias."
         :erro="erros.adicionais"
       >
         <template #default="{ id, descricao, invalido }">
@@ -329,8 +328,8 @@ function aoMudarDesligamento() {
     </div>
 
     <UiFormGroup
-      titulo="Pagamentos anteriores e FGTS"
-      descricao="Valores já pagos que afetam o 13º, o FGTS e os tributos da rescisão."
+      titulo="Pagamentos anteriores"
+      descricao="Valores já pagos que afetam o 13º e os tributos da rescisão. O saldo do FGTS fica na etapa Tipo de rescisão, junto da multa."
       recolhivel
       largo
       :aberto="temPagamentosAnteriores"
@@ -338,18 +337,6 @@ function aoMudarDesligamento() {
       <UiField id="resc-adiantamento" rotulo="Adiantamento de 13º" opcional ajuda="Primeira parcela do 13º paga no ano; é descontada na rescisão." :erro="erros.adiantamentoDecimo">
         <template #default="{ id, descricao, invalido }">
           <UiMoneyInput :id="id" v-model="form.adiantamentoDecimo" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
-        </template>
-      </UiField>
-
-      <UiField
-        id="resc-saldo-fgts"
-        rotulo="Saldo do FGTS"
-        opcional
-        ajuda="Saldo para fins rescisórios (depósitos anteriores, com atualização). Base da multa rescisória junto com o FGTS da rescisão."
-        :erro="erros.saldoFgts"
-      >
-        <template #default="{ id, descricao, invalido }">
-          <UiMoneyInput :id="id" v-model="form.saldoFgts" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
         </template>
       </UiField>
 

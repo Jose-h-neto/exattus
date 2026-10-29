@@ -247,6 +247,7 @@ const ETAPA_DOS_CAMPOS: Record<string, 1 | 2> = {
   diasAvisoNaoCumpridos: 2,
   indenizacao480: 2,
   outrosDescontos: 2,
+  saldoFgts: 2,
 }
 
 export function etapaDoCampo(campo: string): 1 | 2 {

@@ -131,6 +131,13 @@ const linhas = computed<LinhaDemonstrativo[]>(() => {
       referencia: irrf.faixa.aliquota === 0 ? 'Isento' : formatarPercentual(irrf.faixa.aliquota),
       desconto: irrf.irrf,
     },
+    // Depois dos tributos: so reduzem o liquido.
+    ...(r.entrada.adiantamentoSalarial > 0
+      ? [{ descricao: 'Adiantamento salarial', detalhe: 'Fora das bases de INSS e IRRF', desconto: r.entrada.adiantamentoSalarial }]
+      : []),
+    ...(r.entrada.adiantamentoFerias > 0
+      ? [{ descricao: 'Adiantamento de férias', detalhe: 'Líquido das férias pago antes · fora das bases', desconto: r.entrada.adiantamentoFerias }]
+      : []),
   ]
 })
 
@@ -167,6 +174,7 @@ function salvar() {
         r.entrada.horasExtras > 0 ? 'horas extras' : '',
         r.entrada.comissoes > 0 ? 'comissões' : '',
         r.entrada.dsr > 0 ? 'DSR' : '',
+        r.adiantamentos > 0 ? 'adiantamento' : '',
       ].filter(Boolean).join(' · '),
       bruto: r.totalProventos,
       inss: r.inss.total,
@@ -307,6 +315,35 @@ watch(
       </UiFormGroup>
 
       <UiFormGroup
+        titulo="Adiantamentos"
+        descricao="Valores já pagos no mês. São descontados do líquido depois do INSS e do IRRF e não alteram as bases de cálculo."
+      >
+        <UiField
+          id="folha-adiantamento"
+          rotulo="Adiantamento salarial"
+          ajuda="Opcional. Vale ou adiantamento quinzenal pago no mês."
+          :erro="erros.adiantamentoSalarial"
+          :class="form.modalidade === 'empregado' ? '' : 'col-span-2'"
+        >
+          <template #default="{ id, descricao, invalido }">
+            <UiMoneyInput :id="id" v-model="form.adiantamentoSalarial" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
+          </template>
+        </UiField>
+
+        <UiField
+          v-if="form.modalidade === 'empregado'"
+          id="folha-adiantamento-ferias"
+          rotulo="Adiantamento de férias"
+          ajuda="Opcional. Líquido das férias pago antes do início do gozo, que a folha do mês desconta."
+          :erro="erros.adiantamentoFerias"
+        >
+          <template #default="{ id, descricao, invalido }">
+            <UiMoneyInput :id="id" v-model="form.adiantamentoFerias" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
+          </template>
+        </UiField>
+      </UiFormGroup>
+
+      <UiFormGroup
         titulo="Ajustes e conferência do holerite"
         recolhivel
         :aberto="temAjustes"
@@ -355,6 +392,10 @@ watch(
             { rotulo: 'Valor líquido', valor: resultado.liquido, destaque: true },
           ]"
         />
+
+        <UiAlert v-if="resultado.liquido < 0" tom="atencao">
+          Os descontos superam os proventos: o líquido ficou negativo. Confira os adiantamentos informados.
+        </UiAlert>
 
         <UiAlert v-if="resultado.inss.limitado" tom="atencao">
           A base do INSS ({{ formatarMoeda(resultado.inss.base) }}) ultrapassa o teto de

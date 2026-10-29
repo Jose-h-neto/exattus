@@ -541,6 +541,7 @@ const reducao = REDUCAO_2026
             ['Arredondamento', 'Todos os valores são calculados em centavos inteiros, com arredondamento a cada faixa.'],
             ['Salário proporcional', 'Salário bruto ÷ 30 × dias trabalhados; o mês é sempre considerado com 30 dias.'],
             ['Horas extras, comissões e DSR', 'Somados ao salário proporcional pelo valor informado, sem proporcionalizar pelos dias. Integram as bases do INSS e do IRRF da folha mensal.'],
+            ['Adiantamentos', 'Adiantamento salarial e de férias são descontados do líquido depois do INSS e do IRRF, sem alterar as bases de cálculo.'],
             ['Horas extras em horas', 'Base ÷ divisor × horas × (100% + adicional), com um arredondamento por linha. A base é o salário bruto mensal, salvo quando informada outra (Súmula 264 do TST).'],
             ['INSS do empregado', 'Progressivo por faixas até o teto. Faixas completas usam o valor fixo da tabela, quando informado.'],
             ['INSS do pró-labore', 'Alíquota única sobre a base, limitada ao teto de contribuição.'],

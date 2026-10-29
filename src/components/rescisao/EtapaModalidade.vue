@@ -73,6 +73,15 @@ const direitos = computed(() => {
   ]
 })
 
+/** Composicao da multa do FGTS para a conta exibida ao lado do saldo. */
+const multaFgts = computed(() => {
+  const fgts = resultado.value?.fgts
+
+  return fgts
+    ? { saldo: fgts.saldoAnterior, rescisao: fgts.mensal + fgts.decimo, percentual: fgts.percentualMulta, multa: fgts.multa }
+    : null
+})
+
 const limite480 = computed(() => {
   const linha = resultado.value?.descontos.find((item) => item.codigo === 'indenizacao_480')
   return linha ? linha.valor : null
@@ -154,6 +163,37 @@ const limite480 = computed(() => {
               <dd class="num font-medium text-ink">{{ formatarData(resultado.tempo.dataProjetada) }}</dd>
             </div>
           </dl>
+        </UiFormGroup>
+
+        <UiFormGroup
+          titulo="Multa do FGTS"
+          descricao="A multa incide sobre o saldo do FGTS para fins rescisórios somado ao FGTS desta rescisão (mês do desligamento, aviso indenizado e 13º). O percentual depende da modalidade."
+          largo
+        >
+          <UiField
+            id="resc-saldo-fgts"
+            rotulo="Saldo do FGTS"
+            opcional
+            ajuda="Saldo para fins rescisórios do extrato do FGTS: depósitos anteriores, com atualização."
+            :erro="erros.saldoFgts"
+          >
+            <template #default="{ id, descricao, invalido }">
+              <UiMoneyInput :id="id" v-model="form.saldoFgts" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
+            </template>
+          </UiField>
+
+          <!-- Conta da multa ao vivo, na altura do campo. -->
+          <div class="col-span-2 self-end pb-[22px] text-[13px] text-ink-2 lg:col-span-3" aria-live="polite">
+            <p v-if="!modalidade.multaFgts" class="text-muted">Esta modalidade não tem multa do FGTS.</p>
+            <p v-else-if="multaFgts" class="num leading-5">
+              ({{ formatarMoeda(multaFgts.saldo) }} de saldo + {{ formatarMoeda(multaFgts.rescisao) }} desta rescisão)
+              × {{ formatarPercentual(multaFgts.percentual) }} =
+              <span class="font-semibold text-ink">{{ formatarMoeda(multaFgts.multa) }}</span>
+            </p>
+            <p v-else class="text-muted">
+              Multa de {{ formatarPercentual(modalidade.multaFgts) }} sobre o saldo e o FGTS desta rescisão. Complete os dados para ver o valor.
+            </p>
+          </div>
         </UiFormGroup>
 
         <UiFormGroup v-if="modalidade.indenizacao480" titulo="Indenização do art. 480" largo>
