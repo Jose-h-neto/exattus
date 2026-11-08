@@ -1,4 +1,4 @@
-// Exattus icon map — Hugeicons free (Stroke Rounded), MIT.
+// Exattus icon map â€” Hugeicons free (Stroke Rounded), MIT.
 // npm i @hugeicons/vue @hugeicons/core-free-icons
 // Add an icon here, by its Hugeicons export name, before using it through <ExIcon>.
 import {
@@ -32,7 +32,7 @@ import {
   MoreHorizontalIcon,
   Sun03Icon,
   Moon02Icon,
-  // Exattus: ações e módulos acrescentados ao sistema
+  // Exattus: aÃ§Ãµes e mÃ³dulos acrescentados ao sistema
   Menu01Icon,
   FloppyDiskIcon,
   RefreshIcon,
@@ -47,6 +47,9 @@ import {
   Archive02Icon,
   Cash01Icon,
   PaintBoardIcon,
+  Folder01Icon,
+  Upload04Icon,
+  Xls02Icon,
 } from '@hugeicons/core-free-icons'
 
 export const icons = {
@@ -95,6 +98,9 @@ export const icons = {
   'arquivo': Archive02Icon,
   'dinheiro': Cash01Icon,
   'paleta': PaintBoardIcon,
+  'pasta': Folder01Icon,
+  'upload': Upload04Icon,
+  'planilha': Xls02Icon,
 } as const
 
 export type IconName = keyof typeof icons

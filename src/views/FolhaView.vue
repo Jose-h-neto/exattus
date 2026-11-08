@@ -34,6 +34,7 @@ import {
 } from '@/features/folha'
 import { useAtalhos } from '@/lib/teclado'
 import { useAvisos } from '@/stores/avisos'
+import { useCofre } from '@/stores/cofre'
 import { useConferencias } from '@/stores/conferencias'
 import { useParametros } from '@/stores/parametros'
 
@@ -41,6 +42,7 @@ const route = useRoute()
 const router = useRouter()
 const { tabelaInss, tabelaIrrf } = useParametros()
 const conferencias = useConferencias()
+const cofre = useCofre()
 const { avisar } = useAvisos()
 
 const modalidades: { valor: Modalidade; rotulo: string }[] = [
@@ -199,6 +201,26 @@ watch(
     if (salva?.tipo === 'folha') {
       Object.assign(form, formularioFolhaPadrao(), copiarFormularioFolha(salva.formulario))
       avisar(`Conferência "${salva.referencia}" carregada.`, 'info')
+    }
+
+    router.replace({ name: 'folha' })
+  },
+  { immediate: true },
+)
+
+/** Abre um funcionario de um lote do cofre: /folha?lote=<id>&linha=<id> */
+watch(
+  () => [route.query.lote, route.query.linha] as const,
+  async ([lote, linha]) => {
+    if (typeof lote !== 'string' || typeof linha !== 'string') return
+
+    const encontrada = await cofre.obterLinha(lote, linha).catch(() => null)
+
+    if (encontrada?.tipo === 'folha') {
+      Object.assign(form, formularioFolhaPadrao(), copiarFormularioFolha(encontrada.formulario))
+      avisar(`“${encontrada.nome}” carregado do lote.`, 'info')
+    } else {
+      avisar('Funcionário do lote não encontrado.', 'erro')
     }
 
     router.replace({ name: 'folha' })

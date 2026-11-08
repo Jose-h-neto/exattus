@@ -5,8 +5,10 @@ export type ModoMenu = 'fixo' | 'flutuante' | 'gaveta'
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 import { NAVEGACAO } from '@/app/navegacao'
+import { useCofre } from '@/stores/cofre'
 import { useConferencias } from '@/stores/conferencias'
 import { useParametros } from '@/stores/parametros'
 import UiIcon from '@/components/ui/UiIcon.vue'
@@ -25,7 +27,9 @@ const botaoMenu = computed(() => {
   return { icone: 'fechar' as const, rotulo: 'Fechar menu' }
 })
 
+const route = useRoute()
 const { total } = useConferencias()
+const { totalEmpresas } = useCofre()
 const { algumaPersonalizada: personalizada } = useParametros()
 </script>
 
@@ -56,13 +60,16 @@ const { algumaPersonalizada: personalizada } = useParametros()
           <a
             :href="href"
             class="ex-nav-item"
-            :aria-current="isActive ? 'page' : undefined"
+            :aria-current="isActive || route.meta.navegacao === item.rota ? 'page' : undefined"
             @click="navigate($event); emit('navegar')"
           >
             <UiIcon :nome="item.icone" :tamanho="20" />
             <span class="ex-nav-item__label truncate">{{ item.rotulo }}</span>
             <span v-if="item.rota === 'conferencias' && total > 0" class="ex-nav-item__badge">
               {{ total }}<span class="ex-sr"> salvas</span>
+            </span>
+            <span v-if="item.rota === 'cofre' && totalEmpresas > 0" class="ex-nav-item__badge">
+              {{ totalEmpresas }}<span class="ex-sr"> {{ totalEmpresas === 1 ? 'empresa' : 'empresas' }}</span>
             </span>
             <span
               v-if="item.rota === 'parametros' && personalizada"

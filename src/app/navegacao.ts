@@ -46,6 +46,12 @@ export const NAVEGACAO: GrupoNavegacao[] = [
         descricao: 'Cálculos salvos de folha e férias, prontos para reabrir ou exportar. Ficam salvos apenas neste navegador.',
         icone: 'arquivo',
       },
+      {
+        rota: 'cofre',
+        rotulo: 'Cofre de lotes',
+        descricao: 'Conferências em lote importadas por planilha, organizadas em pastas por empresa. Ficam salvas apenas neste navegador.',
+        icone: 'pasta',
+      },
     ],
   },
   {
@@ -60,6 +66,11 @@ export const NAVEGACAO: GrupoNavegacao[] = [
     ],
   },
 ]
+
+/** Rota do menu correspondente: a propria ou a indicada em meta.navegacao (rotas internas de um modulo). */
+export function rotaDoMenu(destino: { name?: unknown; meta: { navegacao?: string } }): string {
+  return destino.meta.navegacao ?? String(destino.name ?? '')
+}
 
 export function localizarItem(rota: string) {
   for (const grupo of NAVEGACAO) {

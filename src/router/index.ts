@@ -1,6 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
-import { localizarItem } from '@/app/navegacao'
+import { localizarItem, rotaDoMenu } from '@/app/navegacao'
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** Item do menu ao qual a rota pertence (rotas internas de um modulo, ex.: pasta do cofre). */
+    navegacao?: string
+  }
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -10,6 +17,19 @@ const router = createRouter({
     { path: '/ferias', name: 'ferias', component: () => import('@/views/FeriasView.vue') },
     { path: '/rescisao', name: 'rescisao', component: () => import('@/views/RescisaoView.vue') },
     { path: '/conferencias', name: 'conferencias', component: () => import('@/views/ConferenciasView.vue') },
+    { path: '/cofre', name: 'cofre', component: () => import('@/views/CofreView.vue') },
+    {
+      path: '/cofre/:empresaId',
+      name: 'cofre-empresa',
+      component: () => import('@/views/CofreEmpresaView.vue'),
+      meta: { navegacao: 'cofre' },
+    },
+    {
+      path: '/cofre/:empresaId/lote/:loteId',
+      name: 'cofre-lote',
+      component: () => import('@/views/LoteView.vue'),
+      meta: { navegacao: 'cofre' },
+    },
     { path: '/parametros', name: 'parametros', component: () => import('@/views/ParametrosView.vue') },
     { path: '/:caminho(.*)*', redirect: { name: 'folha' } },
   ],
@@ -19,7 +39,7 @@ const router = createRouter({
 })
 
 router.afterEach((destino) => {
-  const local = localizarItem(String(destino.name ?? ''))
+  const local = localizarItem(rotaDoMenu(destino))
 
   document.title = local ? `${local.item.rotulo} · Exattus` : 'Exattus'
 })

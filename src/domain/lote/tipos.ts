@@ -84,11 +84,11 @@ export function formatarCnpj(digitos: string): string {
   return digitos.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5')
 }
 
-/** "06/2026" ou "2026-06" -> "2026-06"; null quando invalida. */
+/** "06/2026", "2026-06" ou uma data "2026-06-01" (celula de data no Excel) -> "2026-06"; null quando invalida. */
 export function lerCompetencia(texto: string): string | null {
   const limpo = String(texto ?? '').trim()
   const br = /^(\d{1,2})[/-](\d{4})$/.exec(limpo)
-  const iso = /^(\d{4})-(\d{1,2})$/.exec(limpo)
+  const iso = /^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/.exec(limpo)
   const [ano, mes] = br ? [Number(br[2]), Number(br[1])] : iso ? [Number(iso[1]), Number(iso[2])] : [0, 0]
 
   if (!ano || mes < 1 || mes > 12) return null

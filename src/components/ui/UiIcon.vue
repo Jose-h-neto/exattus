@@ -36,6 +36,10 @@ const MAPA = {
   expandir: 'expandir',
   sol: 'sun',
   lua: 'moon',
+  empresa: 'empresa',
+  pasta: 'pasta',
+  enviar: 'upload',
+  planilha: 'planilha',
 } as const satisfies Record<string, IconName>
 
 export type NomeIcone = keyof typeof MAPA
