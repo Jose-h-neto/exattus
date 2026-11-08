@@ -32,48 +32,51 @@ export async function exportarProfessores(empresa: Empresa): Promise<Blob> {
     properties: { tabColor: { argb: COR.info } },
     views: [{ state: 'frozen', xSplit: 1, ySplit: 1 }],
   })
-  const cabecalhos = ['Professor', 'Turma', 'Matrícula', ...tipos.map((tipo) => tipo.descricao), 'Total de aulas']
+  // Colunas fixas: Professor, Turma, Cod. da empresa, Matricula; depois uma por tipo de aula e o total.
+  const FIXAS = 4
+  const cabecalhos = ['Professor', 'Turma', 'Cód. da empresa', 'Matrícula', ...tipos.map((tipo) => tipo.descricao), 'Total de aulas']
+  const larguras = [34, 24, 14, 12]
 
-  aba.columns = cabecalhos.map((cabecalho, indice) => ({ header: cabecalho, width: indice === 0 ? 34 : indice === 1 ? 24 : indice === 2 ? 12 : 14 }))
+  aba.columns = cabecalhos.map((cabecalho, indice) => ({ header: cabecalho, width: larguras[indice] ?? 14 }))
 
   const cabecalho = aba.getRow(1)
 
   cabecalho.height = 36
   cabecalho.eachCell((celula, indice) => {
-    const aulas = indice > 3 && indice < cabecalhos.length
+    const aulas = indice > FIXAS && indice < cabecalhos.length
 
     celula.font = fonte({ size: 9, bold: true, cor: aulas ? COR.info : COR.primaryHover })
     celula.fill = preenchimento(aulas ? COR.infoSoft : COR.violet100)
-    celula.alignment = { horizontal: indice > 3 ? 'center' : 'left', vertical: 'middle', wrapText: true, indent: indice > 3 ? 0 : 1 }
+    celula.alignment = { horizontal: indice > 2 ? 'center' : 'left', vertical: 'middle', wrapText: true, indent: indice > 2 ? 0 : 1 }
     celula.border = { bottom: { style: 'medium', color: { argb: COR.primary } } }
   })
 
   professores.forEach((professor, posicao) => {
     const quantidades = tipos.map((tipo) => (professor.aulas[tipo.id] ? (professor.aulas[tipo.id] ?? 0) / 100 : null))
     const total = Object.values(professor.aulas).reduce((soma, valor) => soma + valor, 0) / 100
-    const linha = aba.addRow([professor.nome, professor.turma, professor.matricula, ...quantidades, total])
+    const linha = aba.addRow([professor.nome, professor.turma, empresa.codigoFolha ?? '', professor.matricula, ...quantidades, total])
 
     linha.eachCell({ includeEmpty: true }, (celula, indice) => {
       celula.fill = preenchimento(posicao % 2 ? COR.hover : COR.white)
       celula.border = BORDA_CELULA
-      celula.font = fonte({ bold: indice === 1 || indice === cabecalhos.length })
-      celula.alignment = { vertical: 'middle', horizontal: indice > 3 ? 'right' : 'left', indent: indice > 3 ? 0 : 1 }
-      if (indice === 3) celula.numFmt = '@'
-      if (indice > 3) celula.numFmt = '#,##0.##'
+      celula.font = fonte({ bold: indice === 1 || indice === FIXAS || indice === cabecalhos.length })
+      celula.alignment = { vertical: 'middle', horizontal: indice > 2 ? 'right' : 'left', indent: indice > 2 ? 0 : 1 }
+      if (indice === 3 || indice === FIXAS) celula.numFmt = '@'
+      if (indice > FIXAS) celula.numFmt = '#,##0.##'
     })
   })
 
   // Aba Tabela: valores da instituicao, para recriar as rubricas ao importar.
   const abaTabela = pasta.addWorksheet(ABA_TABELA, { properties: { tabColor: { argb: COR.primary } } })
 
-  abaTabela.columns = [{ header: 'Rubrica', width: 34 }, { header: 'Valor da hora-aula', width: 20 }]
+  abaTabela.columns = [{ header: 'Rubrica', width: 34 }, { header: 'Valor da hora-aula', width: 20 }, { header: 'Código da rubrica', width: 18 }]
   abaTabela.getRow(1).eachCell((celula) => {
     celula.font = fonte({ size: 9, bold: true, cor: COR.white })
     celula.fill = preenchimento(COR.primaryHover)
   })
 
   for (const tipo of tabela?.tipos ?? []) {
-    const linha = abaTabela.addRow([tipo.descricao, tipo.valor / 100])
+    const linha = abaTabela.addRow([tipo.descricao, tipo.valor / 100, tipo.codigo ?? ''])
 
     linha.getCell(2).numFmt = FORMATO.moeda
   }
@@ -155,7 +158,9 @@ export async function lerArquivoProfessores(arquivo: File): Promise<ArquivoProfe
     if (!descricao || valor === null || Number.isNaN(valor) || valor <= 0) return
     if (descricao === ROTULO_HORA_ATIVIDADE || descricao === ROTULO_DIVISOR) return
 
-    rubricas.push({ id: '', descricao, valor })
+    const codigo = textoCelula(linha.getCell(3).value)
+
+    rubricas.push({ id: '', descricao, valor, ...(codigo ? { codigo } : {}) })
   })
 
   return { texto: linhas.join('\n'), rubricas }
@@ -184,7 +189,16 @@ export function completarTabela(tabela: TabelaHoraAula, rubricas: readonly TipoA
   const criadas: TipoAula[] = []
 
   for (const rubrica of rubricas) {
-    if (tipos.some((tipo) => mesmaRubrica(tipo.descricao, rubrica.descricao))) continue
+    const existente = tipos.findIndex((tipo) => mesmaRubrica(tipo.descricao, rubrica.descricao))
+
+    // Ja existe: so completa o codigo da rubrica, se faltar.
+    if (existente >= 0) {
+      const tipo = tipos[existente]!
+
+      if (!tipo.codigo && rubrica.codigo) tipos[existente] = { ...tipo, codigo: rubrica.codigo }
+
+      continue
+    }
 
     const nova = { ...rubrica, id: novoId(rubrica.descricao, tipos) }
 

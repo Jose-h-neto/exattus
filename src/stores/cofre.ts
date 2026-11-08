@@ -1,6 +1,14 @@
 import { computed, ref } from 'vue'
 
-import { tabelaHoraAulaPadrao, type ProfessorHoraAula, type TabelaHoraAula } from '@/domain/horaAula'
+import {
+  mesmaRubrica,
+  preencherCodigos,
+  RUBRICA_FUNDAMENTAL_ANTIGA,
+  RUBRICAS_HORA_AULA_PADRAO,
+  tabelaHoraAulaPadrao,
+  type ProfessorHoraAula,
+  type TabelaHoraAula,
+} from '@/domain/horaAula'
 import type { CabecalhoLote, Empresa, LinhaLote, Lote } from '@/domain/lote/tipos'
 import { normalizarCnpj, resumirLinhas } from '@/domain/lote/tipos'
 import { lerTabelaColada, montarProfessores } from '@/features/lote/colarProfessores'
@@ -67,41 +75,70 @@ function mesmoNome(a: string, b: string): boolean {
   return a.trim().localeCompare(b.trim(), 'pt-BR', { sensitivity: 'base' }) === 0
 }
 
+/** Impressao digital do conteudo: o arquivo local mudou -> recarrega. */
+function hashTexto(texto: string): string {
+  let hash = 5381
+
+  for (let indice = 0; indice < texto.length; indice++) hash = ((hash << 5) + hash + texto.charCodeAt(indice)) | 0
+
+  return String(hash >>> 0)
+}
+
+/** Tabela base para os dados locais: sem a rubrica antiga somada, com as rubricas padrao que faltam e seus codigos. */
+function tabelaParaDadosLocais(atual: TabelaHoraAula | undefined): TabelaHoraAula {
+  const base = atual && !ehTabelaAntiga(atual) ? atual : tabelaHoraAulaPadrao()
+  const tipos = base.tipos.filter((tipo) => !mesmaRubrica(tipo.descricao, RUBRICA_FUNDAMENTAL_ANTIGA))
+  const faltantes = RUBRICAS_HORA_AULA_PADRAO.filter((padrao) => !tipos.some((tipo) => mesmaRubrica(tipo.descricao, padrao.descricao)))
+
+  return preencherCodigos({ ...base, tipos: [...tipos, ...faltantes.map((tipo) => ({ ...tipo }))] })
+}
+
 async function aplicarDadosLocais(lista: Empresa[]): Promise<Empresa[]> {
-  const aplicados = lerJson(CHAVE_DADOS_LOCAIS, (valor): valor is string[] => Array.isArray(valor)) ?? []
+  // Versao anterior gravava so os nomes (lista): sem a impressao digital, recarrega uma vez.
+  const aplicados = lerJson(CHAVE_DADOS_LOCAIS, (valor): valor is Record<string, string> => typeof valor === 'object' && valor !== null && !Array.isArray(valor)) ?? {}
   let resultado = lista
 
   for (const [caminho, texto] of Object.entries(DADOS_LOCAIS)) {
     const nome = caminho.split('/').pop()?.replace(/\.tsv$/i, '') ?? ''
+    const hash = hashTexto(texto)
 
-    if (!nome || aplicados.includes(nome)) continue
+    if (!nome || aplicados[nome] === hash) continue
 
     const atual = resultado.find((empresa) => mesmoNome(empresa.nome, nome))
-
-    // Lista ja cadastrada pelo usuario: nao sobrescreve.
-    if (atual?.professores?.length) {
-      aplicados.push(nome)
-      continue
-    }
-
-    const base = atual?.horaAula && !ehTabelaAntiga(atual.horaAula) ? atual.horaAula : tabelaHoraAulaPadrao()
+    const base = tabelaParaDadosLocais(atual?.horaAula)
     const colada = lerTabelaColada(texto, base)
     const { professores, tabela } = montarProfessores(colada, colada.colunas.map((coluna) => coluna.sugestao), base)
 
+    // O arquivo local e a fonte: substitui a lista de professores da instituicao.
     const empresa: Empresa = {
       ...(atual ?? { id: novoId(), nome, cnpj: '', criadaEm: new Date().toISOString() }),
       horaAula: tabela,
       professores: professores.map((professor) => ({ id: novoId(), ...professor })),
+      ...(colada.codigoEmpresa && !atual?.codigoFolha ? { codigoFolha: colada.codigoEmpresa } : {}),
     }
 
     await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
     resultado = atual ? resultado.map((item) => (item.id === empresa.id ? empresa : item)) : [...resultado, empresa]
-    aplicados.push(nome)
+    aplicados[nome] = hash
   }
 
   gravarJson(CHAVE_DADOS_LOCAIS, aplicados)
 
   return resultado
+}
+
+/** Tabelas ja salvas: preenche o codigo das rubricas padrao que estao sem codigo. */
+async function completarCodigos(lista: Empresa[]): Promise<Empresa[]> {
+  const atualizadas = lista
+    .filter((empresa) => empresa.horaAula)
+    .map((empresa) => ({ ...empresa, horaAula: preencherCodigos(empresa.horaAula!) }))
+    .filter((empresa) => JSON.stringify(empresa.horaAula) !== JSON.stringify(lista.find((item) => item.id === empresa.id)?.horaAula))
+
+  if (!atualizadas.length) return lista
+
+  await aplicar(atualizadas.map((empresa) => ({ loja: LOJAS.empresas, gravar: empresa })))
+
+  return lista.map((empresa) => atualizadas.find((item) => item.id === empresa.id) ?? empresa)
 }
 
 /** Atualiza a tabela antiga de 5 tipos (sem professores) para as rubricas atuais. */
@@ -147,7 +184,7 @@ function carregar(): Promise<void> {
     .then(async ([listaEmpresas, listaLotes]) => {
       const semeadas = await migrarTabelasAntigas(await semearInstituicao(listaEmpresas))
 
-      empresas.value = ordenarEmpresas(await aplicarDadosLocais(semeadas))
+      empresas.value = ordenarEmpresas(await completarCodigos(await aplicarDadosLocais(semeadas)))
       lotes.value = listaLotes
       erro.value = null
     })
@@ -191,11 +228,12 @@ export function useCofre() {
         .sort((a, b) => b.competencia.localeCompare(a.competencia) || b.criadoEm.localeCompare(a.criadoEm))
     },
 
-    async criarEmpresa(dados: { nome: string; cnpj: string }): Promise<Empresa> {
+    async criarEmpresa(dados: { nome: string; cnpj: string; codigoFolha?: string }): Promise<Empresa> {
       const empresa: Empresa = {
         id: novoId(),
         nome: dados.nome.trim(),
         cnpj: normalizarCnpj(dados.cnpj),
+        codigoFolha: (dados.codigoFolha ?? '').trim(),
         criadaEm: new Date().toISOString(),
       }
 
@@ -205,12 +243,17 @@ export function useCofre() {
       return empresa
     },
 
-    async atualizarEmpresa(id: string, dados: { nome: string; cnpj: string }) {
+    async atualizarEmpresa(id: string, dados: { nome: string; cnpj: string; codigoFolha?: string }) {
       const atual = empresas.value.find((empresa) => empresa.id === id)
 
       if (!atual) return
 
-      const empresa: Empresa = { ...atual, nome: dados.nome.trim(), cnpj: normalizarCnpj(dados.cnpj) }
+      const empresa: Empresa = {
+        ...atual,
+        nome: dados.nome.trim(),
+        cnpj: normalizarCnpj(dados.cnpj),
+        codigoFolha: (dados.codigoFolha ?? atual.codigoFolha ?? '').trim(),
+      }
 
       await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
       empresas.value = ordenarEmpresas(empresas.value.map((item) => (item.id === id ? empresa : item)))
@@ -233,12 +276,18 @@ export function useCofre() {
      * Grava os professores (aulas padrao) da instituicao. Com `tabela`, grava
      * tambem a tabela de hora-aula na mesma transacao (ex.: rubricas criadas ao colar).
      */
-    async salvarProfessores(id: string, professores: ProfessorHoraAula[], tabela?: TabelaHoraAula) {
+    async salvarProfessores(id: string, professores: ProfessorHoraAula[], tabela?: TabelaHoraAula, codigoFolha?: string) {
       const atual = empresas.value.find((empresa) => empresa.id === id)
 
       if (!atual) return
 
-      const empresa: Empresa = { ...atual, professores, ...(tabela ? { horaAula: tabela } : {}) }
+      const empresa: Empresa = {
+        ...atual,
+        professores,
+        ...(tabela ? { horaAula: tabela } : {}),
+        // Codigo da empresa vindo do arquivo: so preenche se ainda nao houver.
+        ...(codigoFolha && !atual.codigoFolha ? { codigoFolha } : {}),
+      }
 
       await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
       empresas.value = empresas.value.map((item) => (item.id === id ? empresa : item))

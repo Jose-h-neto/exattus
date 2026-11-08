@@ -103,6 +103,7 @@ async function confirmarExclusaoPasta() {
     <PageHeader :titulo="empresa.nome" :trilha="[{ rotulo: empresa.nome }]">
       <template #subtitulo>
         <span class="num">{{ empresa.cnpj ? `CNPJ ${formatarCnpj(empresa.cnpj)}` : 'CNPJ não informado' }}</span>
+        <span v-if="empresa.codigoFolha" class="num"> · cód. folha {{ empresa.codigoFolha }}</span>
         · {{ lotes.length }} {{ lotes.length === 1 ? 'lote' : 'lotes' }}
       </template>
       <template #acoes>

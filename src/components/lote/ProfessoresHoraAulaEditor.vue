@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue'
 
 import ColarProfessores from '@/components/lote/ColarProfessores.vue'
+import ExportarLancamentos from '@/components/lote/ExportarLancamentos.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiIcon from '@/components/ui/UiIcon.vue'
@@ -178,7 +179,7 @@ function mesmoNome(a: string, b: string) {
   return a.trim().localeCompare(b.trim(), 'pt-BR', { sensitivity: 'base' }) === 0
 }
 
-async function importar(dados: { professores: ProfessorColado[]; tabela: TabelaHoraAula; modo: 'substituir' | 'mesclar' }) {
+async function importar(dados: { professores: ProfessorColado[]; tabela: TabelaHoraAula; modo: 'substituir' | 'mesclar'; codigoEmpresa?: string }) {
   const atuais = props.empresa.professores ?? []
   const novos = dados.professores.map((colado) => ({ id: novoId(), ...colado }))
 
@@ -197,11 +198,12 @@ async function importar(dados: { professores: ProfessorColado[]; tabela: TabelaH
         ]
 
   try {
-    const tabelaMudou = dados.tabela.tipos.length !== props.empresa.horaAula?.tipos.length
+    // Tabela mudou: rubricas criadas ou codigos de rubrica completados pelo arquivo.
+    const tabelaMudou = JSON.stringify(dados.tabela) !== JSON.stringify(props.empresa.horaAula)
 
-    await salvarProfessores(props.empresa.id, lista, tabelaMudou ? dados.tabela : undefined)
+    await salvarProfessores(props.empresa.id, lista, tabelaMudou ? dados.tabela : undefined, dados.codigoEmpresa)
     colando.value = false
-    avisar(`${novos.length} professores importados${tabelaMudou ? ' e rubricas novas criadas na tabela' : ''}.`)
+    avisar(`${novos.length} professores importados${tabelaMudou ? ' e tabela de rubricas atualizada' : ''}.`)
   } catch (causa) {
     avisar(causa instanceof Error ? causa.message : 'Não foi possível importar os professores.', 'erro')
   }
@@ -241,13 +243,34 @@ async function importarArquivo(arquivo: File | undefined) {
 
     const resultado = montarProfessores(colada, destinos, completa)
 
-    await importar({ professores: resultado.professores, tabela: resultado.tabela, modo: props.empresa.professores?.length ? 'mesclar' : 'substituir' })
+    await importar({
+      professores: resultado.professores,
+      tabela: resultado.tabela,
+      modo: props.empresa.professores?.length ? 'mesclar' : 'substituir',
+      codigoEmpresa: colada.codigoEmpresa,
+    })
   } catch (causa) {
     avisar(causa instanceof Error ? causa.message : 'Não foi possível ler o arquivo.', 'erro')
   } finally {
     processandoArquivo.value = false
     if (entradaArquivo.value) entradaArquivo.value.value = ''
   }
+}
+
+/* Planilha de lancamentos do sistema da folha, com as aulas padrao salvas. */
+const lancando = ref(false)
+
+const origensLancamento = computed(() =>
+  (props.empresa.professores ?? []).map((professor) => ({ nome: professor.nome, matricula: professor.matricula, aulas: professor.aulas })),
+)
+
+function abrirLancamentos() {
+  if (alterado.value) {
+    avisar('Salve as alterações dos professores antes de gerar os lançamentos.', 'info')
+    return
+  }
+
+  lancando.value = true
 }
 
 function abrirColar() {
@@ -272,6 +295,9 @@ function abrirColar() {
         Aulas <span class="font-semibold">padrão do mês</span> de cada professor. Na Folha e no modelo do lote elas já vêm preenchidas; altere só o que mudou no mês.
       </p>
       <div class="flex shrink-0 flex-wrap items-center gap-2">
+        <UiButton variante="primario" icone="planilha" :disabled="!empresa.professores?.length" @click="abrirLancamentos">
+          Planilha de lançamentos
+        </UiButton>
         <UiButton variante="discreto" icone="baixar" :disabled="!empresa.professores?.length" @click="exportar">Exportar</UiButton>
         <UiButton variante="discreto" icone="enviar" :disabled="processandoArquivo" @click="entradaArquivo?.click()">
           {{ processandoArquivo ? 'Importando…' : 'Importar arquivo' }}
@@ -414,6 +440,14 @@ function abrirColar() {
       :texto-inicial="textoParaLigar"
       @fechar="colando = false"
       @importar="importar"
+    />
+
+    <ExportarLancamentos
+      :aberto="lancando"
+      :empresa="empresa"
+      :origens="origensLancamento"
+      origem-descricao="aulas padrão dos professores cadastrados"
+      @fechar="lancando = false"
     />
   </div>
 </template>

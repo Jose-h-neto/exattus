@@ -29,7 +29,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   fechar: []
-  importar: [dados: { professores: ProfessorColado[]; tabela: TabelaHoraAula; modo: 'substituir' | 'mesclar' }]
+  importar: [dados: { professores: ProfessorColado[]; tabela: TabelaHoraAula; modo: 'substituir' | 'mesclar'; codigoEmpresa?: string }]
 }>()
 
 const texto = ref('')
@@ -77,7 +77,12 @@ const comAulas = computed(() => resultado.value?.professores.filter((professor) 
 function confirmar() {
   if (!resultado.value?.professores.length) return
 
-  emit('importar', { professores: resultado.value.professores, tabela: resultado.value.tabela, modo: modo.value })
+  emit('importar', {
+    professores: resultado.value.professores,
+    tabela: resultado.value.tabela,
+    modo: modo.value,
+    codigoEmpresa: colada.value?.codigoEmpresa,
+  })
 }
 </script>
 

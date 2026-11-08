@@ -33,6 +33,8 @@ interface LinhaRascunho {
   id: string
   descricao: string
   valor: string
+  /** Codigo da rubrica no sistema da folha. */
+  codigo: string
 }
 
 interface Rascunho {
@@ -49,7 +51,7 @@ function paraRascunho(tabela: TabelaHoraAula | undefined): Rascunho | null {
   if (!tabela) return null
 
   return {
-    tipos: tabela.tipos.map((tipo) => ({ id: tipo.id, descricao: tipo.descricao, valor: formatarDecimal(tipo.valor) })),
+    tipos: tabela.tipos.map((tipo) => ({ id: tipo.id, descricao: tipo.descricao, valor: formatarDecimal(tipo.valor), codigo: tipo.codigo ?? '' })),
     horaAtividade: formatarDecimal(tabela.horaAtividade).replace(/,00$/, ''),
     divisorDsr: String(tabela.divisorDsr),
   }
@@ -76,7 +78,12 @@ const tabela = computed<TabelaHoraAula | null>(() => {
   const divisor = paraInteiro(r.divisorDsr, 1, LIMITE_DIVISOR_DSR)
 
   return {
-    tipos: r.tipos.map((tipo) => ({ id: tipo.id, descricao: tipo.descricao.trim(), valor: paraCentavos(tipo.valor) ?? 0 })),
+    tipos: r.tipos.map((tipo) => ({
+      id: tipo.id,
+      descricao: tipo.descricao.trim(),
+      valor: paraCentavos(tipo.valor) ?? 0,
+      ...(tipo.codigo.trim() ? { codigo: tipo.codigo.trim() } : {}),
+    })),
     horaAtividade: horaAtividade === null || Number.isNaN(horaAtividade) ? -1 : horaAtividade,
     divisorDsr: divisor === null || Number.isNaN(divisor) ? 0 : divisor,
   }
@@ -100,7 +107,7 @@ const outrasInstituicoes = computed(() => instituicoes.value.filter((empresa) =>
 
 function comecar(base?: TabelaHoraAula) {
   rascunho.value = paraRascunho(base) ?? {
-    tipos: [{ id: novoId(), descricao: '', valor: '' }],
+    tipos: [{ id: novoId(), descricao: '', valor: '', codigo: '' }],
     horaAtividade: '5',
     divisorDsr: '6',
   }
@@ -110,7 +117,7 @@ function comecar(base?: TabelaHoraAula) {
 }
 
 function adicionar() {
-  rascunho.value?.tipos.push({ id: novoId(), descricao: '', valor: '' })
+  rascunho.value?.tipos.push({ id: novoId(), descricao: '', valor: '', codigo: '' })
 }
 
 /** Rubricas padrao que esta instituicao ainda nao tem (comparadas pela descricao). */
@@ -125,7 +132,7 @@ function cadastrarSugeridas(lista: readonly TipoAula[]) {
 
   // Linha em branco (recem-criada) da lugar as sugeridas.
   r.tipos = r.tipos.filter((tipo) => tipo.descricao.trim() || tipo.valor.trim())
-  r.tipos.push(...lista.map((tipo) => ({ id: novoId(), descricao: tipo.descricao, valor: formatarDecimal(tipo.valor) })))
+  r.tipos.push(...lista.map((tipo) => ({ id: novoId(), descricao: tipo.descricao, valor: formatarDecimal(tipo.valor), codigo: tipo.codigo ?? '' })))
 }
 
 function remover(indice: number) {
@@ -191,6 +198,7 @@ async function removerTabela() {
           <thead class="bg-subtle text-xs text-muted">
             <tr>
               <th scope="col" class="px-3 py-2 text-left font-medium">Tipo de aula</th>
+              <th scope="col" class="w-28 px-2 py-2 text-left font-medium" title="Código da rubrica no sistema da folha (planilha de lançamentos)">Cód. rubrica</th>
               <th scope="col" class="w-44 px-2 py-2 text-left font-medium">Valor da hora-aula</th>
               <th scope="col" class="w-12 px-2 py-2"><span class="sr-only">Remover</span></th>
             </tr>
@@ -199,6 +207,9 @@ async function removerTabela() {
             <tr v-for="(tipo, indice) in rascunho.tipos" :key="tipo.id" class="border-t border-line">
               <td class="px-2 py-1.5">
                 <UiInput v-model="tipo.descricao" :aria-label="`Descrição do tipo de aula ${indice + 1}`" placeholder="Ex.: Ensino Médio" autocomplete="off" />
+              </td>
+              <td class="px-2 py-1.5">
+                <UiInput v-model="tipo.codigo" mono inputmode="numeric" :aria-label="`Código da rubrica de ${tipo.descricao || `tipo ${indice + 1}`}`" placeholder="—" autocomplete="off" />
               </td>
               <td class="px-2 py-1.5">
                 <UiMoneyInput v-model="tipo.valor" :aria-label="`Valor da hora-aula de ${tipo.descricao || `tipo ${indice + 1}`}`" placeholder="0,00" />

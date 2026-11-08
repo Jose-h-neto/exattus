@@ -41,6 +41,8 @@ export interface Empresa {
   nome: string
   /** Somente digitos; vazio quando nao informado. */
   cnpj: string
+  /** Codigo da empresa no sistema da folha (planilha de lancamentos). */
+  codigoFolha?: string
   criadaEm: string
   /** Instituicao de ensino: valores da hora-aula, hora-atividade e DSR. */
   horaAula?: TabelaHoraAula

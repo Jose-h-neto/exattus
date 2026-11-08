@@ -13,6 +13,8 @@ export interface TipoAula {
   descricao: string
   /** Valor de uma hora-aula, em centavos. */
   valor: number
+  /** Codigo da rubrica no sistema da folha (planilha de lancamentos). */
+  codigo?: string
 }
 
 export interface TabelaHoraAula {
@@ -53,19 +55,40 @@ export const LIMITE_DIVISOR_DSR = 31
  * oferecidas como sugestao para cadastrar nas instituicoes que nao as tem.
  */
 export const RUBRICAS_HORA_AULA_PADRAO: readonly TipoAula[] = [
-  { id: 'ensino-medio', descricao: 'Ensino Médio', valor: 6425 },
-  { id: 'fundamental', descricao: 'Ensino Fundamental I e II', valor: 5257 },
-  { id: 'infantil', descricao: 'Hora Aula Infantil', valor: 5257 },
+  { id: 'ensino-medio', descricao: 'Ensino Médio', valor: 6425, codigo: '1002' },
+  { id: 'fundamental-1', descricao: 'Ensino Fundamental I', valor: 5257, codigo: '1017' },
+  { id: 'fundamental-2', descricao: 'Ensino Fundamental II', valor: 5257, codigo: '1018' },
+  { id: 'infantil', descricao: 'Hora Aula Infantil', valor: 5257, codigo: '1019' },
   { id: 'subs-ensino-medio', descricao: 'Hora Aula Subs Ensino Médio', valor: 6425 },
   { id: 'subs-fundamental', descricao: 'Hora Subs Fundamental', valor: 5257 },
   { id: 'reuniao', descricao: 'Hora Aula Reunião', valor: 6425 },
-  { id: 'ppe', descricao: 'Hora Aula PPE', valor: 4291 },
-  { id: 'reforco-plantao', descricao: 'Hora Aula Reforço/Plantão', valor: 6425 },
+  { id: 'ppe', descricao: 'Hora Aula PPE', valor: 4291, codigo: '1005' },
+  { id: 'reforco-plantao', descricao: 'Hora Aula Reforço/Plantão', valor: 6425, codigo: '1003' },
   { id: 'vestibulinho', descricao: 'Hora Aula Vestibulinho', valor: 6425 },
   { id: 'aula-subs-fundamental', descricao: 'Hora Aula Subs Fundamental', valor: 5257 },
-  { id: 'contraturno', descricao: 'Hora Aula Contraturno', valor: 5257 },
-  { id: 'olimpiada', descricao: 'Hora Aula Olimpíada', valor: 6425 },
+  { id: 'olimpiada', descricao: 'Hora Aula Olimpíada', valor: 6425, codigo: '1020' },
+  { id: 'contraturno', descricao: 'Hora Aula Contraturno', valor: 5257, codigo: '1021' },
 ]
+
+/** Rubrica da primeira versao (Fund. I e II somados): substituida por Fundamental I (1017) e II (1018). */
+export const RUBRICA_FUNDAMENTAL_ANTIGA = 'Ensino Fundamental I e II'
+
+/**
+ * Completa a tabela da instituicao com o padrao: preenche o codigo das rubricas
+ * conhecidas que estao sem codigo. Nao muda valores nem descricoes.
+ */
+export function preencherCodigos(tabela: TabelaHoraAula): TabelaHoraAula {
+  return {
+    ...tabela,
+    tipos: tabela.tipos.map((tipo) => {
+      if (tipo.codigo) return tipo
+
+      const padrao = RUBRICAS_HORA_AULA_PADRAO.find((rubrica) => mesmaRubrica(rubrica.descricao, tipo.descricao))
+
+      return padrao?.codigo ? { ...tipo, codigo: padrao.codigo } : tipo
+    }),
+  }
+}
 
 /** Professor da instituicao com as aulas padrao do mes (base para a conferencia). */
 export interface ProfessorHoraAula {

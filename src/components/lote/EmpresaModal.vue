@@ -18,7 +18,7 @@ const emit = defineEmits<{ fechar: []; salva: [empresa: Empresa] }>()
 const { criarEmpresa, atualizarEmpresa, empresaPorCnpj, obterEmpresa } = useCofre()
 const { avisar } = useAvisos()
 
-const form = reactive({ nome: '', cnpj: '' })
+const form = reactive({ nome: '', cnpj: '', codigoFolha: '' })
 const tentou = ref(false)
 const salvando = ref(false)
 
@@ -30,6 +30,7 @@ watch(
     tentou.value = false
     form.nome = props.empresa?.nome ?? ''
     form.cnpj = props.empresa?.cnpj ? formatarCnpj(props.empresa.cnpj) : ''
+    form.codigoFolha = props.empresa?.codigoFolha ?? ''
   },
   { immediate: true },
 )
@@ -91,6 +92,16 @@ async function salvar() {
       <UiField id="empresa-cnpj" rotulo="CNPJ" opcional ajuda="Com o CNPJ, a importação da planilha encontra esta pasta sozinha." :erro="erros.cnpj">
         <template #default="{ id, descricao, invalido }">
           <UiInput :id="id" v-model="form.cnpj" mono placeholder="00.000.000/0000-00" :invalido="invalido" :aria-describedby="descricao" autocomplete="off" />
+        </template>
+      </UiField>
+      <UiField
+        id="empresa-codigo-folha"
+        rotulo="Código da empresa no sistema da folha"
+        opcional
+        ajuda="Vai na coluna “Código empresa” da planilha de lançamentos (ex.: 97834)."
+      >
+        <template #default="{ id }">
+          <UiInput :id="id" v-model="form.codigoFolha" mono inputmode="numeric" placeholder="Ex.: 97834" autocomplete="off" />
         </template>
       </UiField>
       <button type="submit" class="sr-only" tabindex="-1">Salvar</button>

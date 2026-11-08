@@ -33,6 +33,8 @@ export interface TabelaColada {
   /** Celulas de aulas que nao sao numero (ignoradas). */
   invalidas: number
   avisos: string[]
+  /** Codigo da empresa no sistema da folha, quando a tabela tem essa coluna. */
+  codigoEmpresa: string
 }
 
 function normalizar(texto: string): string {
@@ -48,6 +50,10 @@ function normalizar(texto: string): string {
 const REGRAS: { cabecalho: RegExp; rubrica: (descricao: string) => boolean }[] = [
   { cabecalho: /\bsubs/, rubrica: () => false },
   { cabecalho: /infantil/, rubrica: (d) => d.includes('infantil') },
+  // Fundamental: "I e II" (rubrica antiga somada), "II"/"2" e "I"/"1" sao rubricas diferentes (1017 e 1018).
+  { cabecalho: /\bfund\w*\s+i\s+e\s+ii\b/, rubrica: (d) => /fundamental i e ii/.test(d) },
+  { cabecalho: /\bfund\w*\s+(ii|2)\b/, rubrica: (d) => /fundamental (ii|2)$/.test(d) && !d.includes('subs') },
+  { cabecalho: /\bfund\w*\s+(i|1)\b/, rubrica: (d) => /fundamental (i|1)$/.test(d) && !d.includes('subs') },
   { cabecalho: /\bfund/, rubrica: (d) => d.includes('fundamental') && !d.includes('subs') },
   { cabecalho: /\bmedio\b/, rubrica: (d) => d.includes('medio') && !d.includes('subs') },
   { cabecalho: /contraturno/, rubrica: (d) => d.includes('contraturno') },
@@ -93,7 +99,8 @@ function ehNumero(celula: string): boolean {
 
 const CABECALHO_NOME = /\b(nome|professor|professora|docente|colaborador)\b/
 const CABECALHO_TURMA = /\b(turma|disciplina|materia|cargo)\b/
-const CABECALHO_MATRICULA = /\b(matricula|registro|codigo)\b/
+const CABECALHO_EMPRESA = /\bcod(igo)?\s+(da\s+)?empresa\b/
+const CABECALHO_MATRICULA = /\b(matricula|registro)\b/
 
 export function lerTabelaColada(texto: string, tabela: TabelaHoraAula): TabelaColada {
   const avisos: string[] = []
@@ -103,7 +110,7 @@ export function lerTabelaColada(texto: string, tabela: TabelaHoraAula): TabelaCo
     .map((linha) => linha.split('\t').map((celula) => celula.trim()))
     .filter((linha) => linha.some(Boolean))
 
-  if (!linhasBrutas.length) return { colunas: [], linhas: [], invalidas: 0, avisos }
+  if (!linhasBrutas.length) return { colunas: [], linhas: [], invalidas: 0, avisos, codigoEmpresa: '' }
 
   // Cabecalho: entre as primeiras linhas, a que mais tem nomes de rubrica, nome ou turma.
   const pontuar = (linha: string[]) =>
@@ -127,7 +134,7 @@ export function lerTabelaColada(texto: string, tabela: TabelaHoraAula): TabelaCo
 
   if (indiceCabecalho < 0) {
     avisos.push('Não encontrei a linha de cabeçalho. Copie a tabela incluindo a linha com os nomes das colunas (ex.: Ed Infantil, Fund. I, Médio).')
-    return { colunas: [], linhas: [], invalidas: 0, avisos }
+    return { colunas: [], linhas: [], invalidas: 0, avisos, codigoEmpresa: '' }
   }
 
   const largura = Math.max(...linhasBrutas.map((linha) => linha.length))
@@ -149,11 +156,17 @@ export function lerTabelaColada(texto: string, tabela: TabelaHoraAula): TabelaCo
   const colunaMatricula = normalizados.findIndex(
     (cabecalho, indice) => indice !== colunaNome && indice !== colunaTurma && CABECALHO_MATRICULA.test(cabecalho),
   )
+  const colunaEmpresa = normalizados.findIndex((cabecalho) => CABECALHO_EMPRESA.test(cabecalho))
 
   const colunas: ColunaAulas[] = cabecalhos
     .map((cabecalho, indice) => ({ indice, cabecalho, sugestao: sugerirDestino(cabecalho, tabela) }))
     // Colunas de total (ex.: "Total de aulas" do arquivo exportado) sao recalculadas: ficam de fora.
-    .filter((coluna) => coluna.cabecalho && ![colunaNome, colunaTurma, colunaMatricula].includes(coluna.indice) && !/^total\b/.test(normalizar(coluna.cabecalho)))
+    .filter(
+      (coluna) =>
+        coluna.cabecalho &&
+        ![colunaNome, colunaTurma, colunaMatricula, colunaEmpresa].includes(coluna.indice) &&
+        !/^total\b/.test(normalizar(coluna.cabecalho)),
+    )
 
   let invalidas = 0
 
@@ -179,7 +192,13 @@ export function lerTabelaColada(texto: string, tabela: TabelaHoraAula): TabelaCo
 
   if (!colunas.length) avisos.push('Nenhuma coluna de aulas encontrada ao lado do nome.')
 
-  return { colunas, linhas, invalidas, avisos }
+  // Codigo da empresa no sistema da folha (coluna "Cod. da empresa"): o primeiro preenchido.
+  const codigoEmpresa =
+    colunaEmpresa >= 0
+      ? (linhasBrutas.slice(indiceCabecalho + 1).map((linha) => linha[colunaEmpresa] ?? '').find((valor) => /^\d+$/.test(valor)) ?? '')
+      : ''
+
+  return { colunas, linhas, invalidas, avisos, codigoEmpresa }
 }
 
 export interface ProfessorColado {

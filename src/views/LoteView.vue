@@ -3,6 +3,7 @@ import { computed, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import PageHeader from '@/components/layout/PageHeader.vue'
+import ExportarLancamentos from '@/components/lote/ExportarLancamentos.vue'
 import UiBadge from '@/components/ui/UiBadge.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
@@ -10,7 +11,7 @@ import UiIcon from '@/components/ui/UiIcon.vue'
 import UiModal from '@/components/ui/UiModal.vue'
 
 import { formatarDataHora } from '@/domain/datas'
-import { formatarMoeda } from '@/domain/dinheiro'
+import { formatarMoeda, paraCentavos } from '@/domain/dinheiro'
 import type { ItemConferenciaLote, SituacaoItemLote } from '@/domain/lote/conferencia'
 import { formatarCompetencia, type LinhaLote, type Lote, type StatusLinhaLote, type TipoLinhaLote } from '@/domain/lote/tipos'
 import { NOME_ABA } from '@/features/lote/colunas'
@@ -112,6 +113,25 @@ function moedaSinal(centavos: number): string {
   return `${centavos > 0 ? '+' : ''}${formatarMoeda(centavos)}`
 }
 
+/* Planilha de lancamentos com as aulas do mes das linhas de hora-aula do lote. */
+const lancando = ref(false)
+
+const origensLancamento = computed(() =>
+  (lote.value?.linhas ?? [])
+    .filter((linha) => linha.horaAula && linha.status !== 'erro')
+    .map((linha) => {
+      const textos = (linha.formulario.aulas ?? {}) as Record<string, string>
+      const cadastrado = empresa.value?.professores?.find((professor) => professor.nome.localeCompare(linha.nome, 'pt-BR', { sensitivity: 'base' }) === 0)
+
+      return {
+        nome: linha.nome,
+        // Matricula da planilha; sem ela, a do professor cadastrado com o mesmo nome.
+        matricula: linha.matricula || cadastrado?.matricula || '',
+        aulas: Object.fromEntries(Object.entries(textos).map(([tipoId, texto]) => [tipoId, paraCentavos(texto) ?? 0])),
+      }
+    }),
+)
+
 async function exportar() {
   if (!lote.value || !empresa.value || exportando.value) return
 
@@ -158,6 +178,7 @@ async function confirmarExclusao() {
       </template>
       <template #acoes>
         <UiButton variante="discreto" icone="lixeira" @click="excluindo = true">Excluir lote</UiButton>
+        <UiButton v-if="origensLancamento.length && empresa.horaAula" icone="planilha" @click="lancando = true">Planilha de lançamentos</UiButton>
         <UiButton variante="primario" icone="planilha" :disabled="exportando" @click="exportar">
           {{ exportando ? 'Exportando…' : 'Exportar resultado' }}
         </UiButton>
@@ -338,6 +359,15 @@ async function confirmarExclusao() {
         </div>
       </section>
     </div>
+
+    <ExportarLancamentos
+      :aberto="lancando"
+      :empresa="empresa"
+      :origens="origensLancamento"
+      :competencia="lote.competencia"
+      origem-descricao="aulas do mês deste lote (aba Hora-aula)"
+      @fechar="lancando = false"
+    />
 
     <UiModal
       tom="perigo"
