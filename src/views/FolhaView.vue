@@ -384,7 +384,7 @@ watch(
                 : 'Lance cada comissão separada (vendas, metas, prêmios). O total é somado aos proventos.'
             "
             :erro="form.comissoesModo === 'total' ? erros.comissoes : undefined"
-            :class="form.comissoesModo === 'separadas' && 'col-span-2'"
+            class="col-span-2"
           >
             <template #acao>
               <UiSegmented v-model="form.comissoesModo" compacto nome="folha-comissoes-modo" rotulo="Lançar comissões" :opcoes="modosComissoes" />
