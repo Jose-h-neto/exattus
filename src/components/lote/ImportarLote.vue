@@ -122,16 +122,24 @@ function soltar(evento: DragEvent) {
 
 const tolerancia = computed(() => paraCentavos(form.tolerancia))
 
+/** Tabela de hora-aula da pasta de destino (calcula a aba Hora-aula). */
+const instituicao = computed(() =>
+  form.destino === NOVA ? { empresaId: '', tabela: null } : { empresaId: form.destino, tabela: obterEmpresa(form.destino)?.horaAula ?? null },
+)
+
 const linhas = computed(() =>
   lida.value
-    ? processarRegistros(lida.value.registros, tolerancia.value !== null && !Number.isNaN(tolerancia.value) ? tolerancia.value : 0, {
-        inss: tabelaInss.value,
-        irrf: tabelaIrrf.value,
-      })
+    ? processarRegistros(
+        lida.value.registros,
+        tolerancia.value !== null && !Number.isNaN(tolerancia.value) ? tolerancia.value : 0,
+        { inss: tabelaInss.value, irrf: tabelaIrrf.value },
+        instituicao.value,
+      )
     : [],
 )
 
 const resumo = computed(() => resumirLinhas(linhas.value))
+const totalHoraAula = computed(() => linhas.value.filter((linha) => linha.horaAula).length)
 const comErro = computed(() => linhas.value.filter((linha) => linha.status === 'erro'))
 
 const empresaFixa = computed(() => (props.empresaId ? obterEmpresa(props.empresaId) : undefined))
@@ -225,7 +233,7 @@ async function importar() {
           <UiIcon :nome="lendo ? 'relogio' : 'enviar'" :tamanho="22" />
         </span>
         <span class="text-sm font-semibold text-ink">{{ lendo ? 'Lendo a planilha…' : 'Arraste a planilha aqui ou clique para escolher' }}</span>
-        <span class="text-xs text-muted">Arquivo .xlsx no modelo do Exattus (abas Lote, Folha e Férias)</span>
+        <span class="text-xs text-muted">Arquivo .xlsx no modelo do Exattus (abas Lote, Folha, Hora-aula e Férias)</span>
         <input
           ref="entrada"
           type="file"
@@ -244,7 +252,7 @@ async function importar() {
           type="button"
           class="font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-60"
           :disabled="gerandoModelo"
-          @click="baixarModelo"
+          @click="baixarModelo(empresaFixa)"
         >
           {{ gerandoModelo ? 'Gerando…' : 'Baixar modelo de planilha' }}
         </button>
@@ -326,6 +334,7 @@ async function importar() {
         <div class="border-l border-line px-4 py-3">
           <dt class="text-xs text-muted">{{ NOME_ABA.folha }}</dt>
           <dd class="num text-xl font-semibold">{{ resumo.folha }}</dd>
+          <dd v-if="totalHoraAula" class="text-xs text-muted">{{ totalHoraAula }} por hora-aula</dd>
         </div>
         <div class="border-t border-line px-4 py-3 sm:border-t-0 sm:border-l">
           <dt class="text-xs text-muted">{{ NOME_ABA.ferias }}</dt>
@@ -347,7 +356,7 @@ async function importar() {
         <ul class="max-h-52 divide-y divide-line overflow-y-auto rounded-md border border-line text-xs">
           <li v-for="linha in comErro" :key="linha.id" class="px-3 py-2">
             <p class="font-semibold text-ink">
-              <span class="num text-muted">Linha {{ linha.linha }} · {{ NOME_ABA[linha.tipo] }} ·</span> {{ linha.nome }}
+              <span class="num text-muted">Linha {{ linha.linha }} · {{ linha.horaAula ? NOME_ABA.hora_aula : NOME_ABA[linha.tipo] }} ·</span> {{ linha.nome }}
             </p>
             <ul class="mt-0.5 space-y-0.5 text-ink-2">
               <li v-for="mensagem in linha.erros" :key="mensagem">{{ mensagem }}</li>

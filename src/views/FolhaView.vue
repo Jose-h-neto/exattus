@@ -6,6 +6,8 @@ import PageHeader from '@/components/layout/PageHeader.vue'
 import BarraResultadoMovel from '@/components/calculo/BarraResultadoMovel.vue'
 import ConferenciaHolerite from '@/components/calculo/ConferenciaHolerite.vue'
 import Demonstrativo, { type LinhaDemonstrativo } from '@/components/calculo/Demonstrativo.vue'
+import ComissoesSeparadas from '@/components/calculo/ComissoesSeparadas.vue'
+import HoraAulaLancamento from '@/components/calculo/HoraAulaLancamento.vue'
 import HorasExtrasHoras from '@/components/calculo/HorasExtrasHoras.vue'
 import MemoriaInss from '@/components/calculo/MemoriaInss.vue'
 import MemoriaIrrf from '@/components/calculo/MemoriaIrrf.vue'
@@ -23,6 +25,7 @@ import UiTabs from '@/components/ui/UiTabs.vue'
 
 import { formatarMoeda, formatarPercentual } from '@/domain/dinheiro'
 import { calcularFolha } from '@/domain/folha'
+import { formatarAulas } from '@/domain/horaAula'
 import { formatarAdicional, formatarHoras } from '@/domain/horasExtras'
 import type { Modalidade } from '@/domain/inss'
 import {
@@ -30,7 +33,9 @@ import {
   formularioFolha as form,
   formularioFolhaPadrao,
   interpretarFolha,
+  type ModoComissoes,
   type ModoHorasExtras,
+  type Remuneracao,
 } from '@/features/folha'
 import { useAtalhos } from '@/lib/teclado'
 import { useAvisos } from '@/stores/avisos'
@@ -55,10 +60,24 @@ const modosHorasExtras: { valor: ModoHorasExtras; rotulo: string; icone: NomeIco
   { valor: 'horas', rotulo: 'Horas', icone: 'relogio' },
 ]
 
+const modosComissoes: { valor: ModoComissoes; rotulo: string; icone: NomeIcone }[] = [
+  { valor: 'total', rotulo: 'Total', icone: 'dinheiro' },
+  { valor: 'separadas', rotulo: 'Separadas', icone: 'adicionar' },
+]
+
+const remuneracoes: { valor: Remuneracao; rotulo: string; icone: NomeIcone }[] = [
+  { valor: 'mensal', rotulo: 'Salário mensal', icone: 'dinheiro' },
+  { valor: 'hora_aula', rotulo: 'Hora-aula', icone: 'relogio' },
+]
+
 /** Abre o grupo de ajustes quando ha valores preenchidos (ex.: conferencia reaberta). */
 const temAjustes = computed(() => Boolean(form.baseInssManual || form.inssInformado || form.irrfInformado))
 
-const leitura = computed(() => interpretarFolha(form))
+/** Professor por hora-aula: valores vem da tabela da instituicao (pasta do cofre). */
+const porHoraAula = computed(() => form.modalidade === 'empregado' && form.remuneracao === 'hora_aula')
+const tabelaHoraAula = computed(() => (porHoraAula.value ? (cofre.obterEmpresa(form.instituicaoId)?.horaAula ?? null) : null))
+
+const leitura = computed(() => interpretarFolha(form, tabelaHoraAula.value))
 const erros = computed(() => leitura.value.erros)
 
 const resultado = computed(() =>
@@ -105,18 +124,47 @@ const linhas = computed<LinhaDemonstrativo[]>(() => {
   const aliquotaEfetiva = r.inss.baseConsiderada > 0 ? Math.round((r.inss.total / r.inss.baseConsiderada) * 10000) : 0
   const irrf = r.irrf.escolhida
 
+  const horaAula = r.entrada.horaAula
+
   return [
-    {
-      descricao: r.entrada.modalidade === 'prolabore' ? 'Pró-labore' : 'Salário',
-      detalhe:
-        r.entrada.dias === 30
-          ? `Mês completo · valor-dia ${formatarMoeda(r.valorDia)}`
-          : `${formatarMoeda(r.entrada.salario)} ÷ 30 × ${r.entrada.dias} dias · valor-dia ${formatarMoeda(r.valorDia)}`,
-      referencia: `${r.entrada.dias} dias`,
-      provento: r.proporcional,
-    },
+    ...(horaAula
+      ? [
+          ...horaAula.linhas.map((linha) => ({
+            descricao: linha.descricao,
+            detalhe: `${formatarAulas(linha.quantidade)} × ${formatarMoeda(linha.valor)}`,
+            referencia: `${formatarAulas(linha.quantidade)} aulas`,
+            provento: linha.total,
+          })),
+          {
+            descricao: 'Hora-atividade',
+            detalhe: `${formatarPercentual(horaAula.percentualHoraAtividade)} sobre ${formatarMoeda(horaAula.totalAulas)} de aulas`,
+            referencia: formatarPercentual(horaAula.percentualHoraAtividade),
+            provento: horaAula.horaAtividade,
+          },
+          {
+            descricao: 'DSR sobre hora-aula',
+            detalhe: `(aulas + hora-atividade) ÷ ${horaAula.divisorDsr}`,
+            provento: horaAula.dsr,
+          },
+        ]
+      : [
+          {
+            descricao: r.entrada.modalidade === 'prolabore' ? 'Pró-labore' : 'Salário',
+            detalhe:
+              r.entrada.dias === 30
+                ? `Mês completo · valor-dia ${formatarMoeda(r.valorDia)}`
+                : `${formatarMoeda(r.entrada.salario)} ÷ 30 × ${r.entrada.dias} dias · valor-dia ${formatarMoeda(r.valorDia)}`,
+            referencia: `${r.entrada.dias} dias`,
+            provento: r.proporcional,
+          },
+        ]),
     ...linhasHorasExtras(r.entrada.horasExtras),
-    ...(r.entrada.comissoes > 0 ? [{ descricao: 'Comissões', provento: r.entrada.comissoes }] : []),
+    // Comissoes separadas: uma linha por comissao, como no holerite.
+    ...(leitura.value.comissoes
+      ? leitura.value.comissoes.linhas.map((comissao) => ({ descricao: comissao.descricao, detalhe: 'Comissão', provento: comissao.valor }))
+      : r.entrada.comissoes > 0
+        ? [{ descricao: 'Comissões', provento: r.entrada.comissoes }]
+        : []),
     ...(r.entrada.dsr > 0 ? [{ descricao: 'DSR', detalhe: 'Sobre horas extras e comissões', provento: r.entrada.dsr }] : []),
     {
       descricao: r.entrada.modalidade === 'prolabore' ? 'INSS sobre pró-labore' : 'INSS',
@@ -172,7 +220,7 @@ function salvar() {
     resumo: {
       detalhe: [
         r.entrada.modalidade === 'prolabore' ? 'Pró-labore' : 'Empregado',
-        `${r.entrada.dias} dias`,
+        r.entrada.horaAula ? `hora-aula · ${formatarAulas(r.entrada.horaAula.quantidade)} aulas` : `${r.entrada.dias} dias`,
         r.entrada.horasExtras > 0 ? 'horas extras' : '',
         r.entrada.comissoes > 0 ? 'comissões' : '',
         r.entrada.dsr > 0 ? 'DSR' : '',
@@ -253,17 +301,38 @@ watch(
 
         <UiSegmented v-model="form.modalidade" nome="folha-modalidade" rotulo="Vínculo" :opcoes="modalidades" class="col-span-2" />
 
-        <UiField id="folha-salario" rotulo="Salário bruto" :erro="erros.salario">
-          <template #default="{ id, descricao, invalido }">
-            <UiMoneyInput :id="id" v-model="form.salario" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" autofocus />
-          </template>
-        </UiField>
+        <UiSegmented
+          v-if="form.modalidade === 'empregado'"
+          v-model="form.remuneracao"
+          nome="folha-remuneracao"
+          rotulo="Remuneração"
+          :opcoes="remuneracoes"
+          class="col-span-2"
+        />
 
-        <UiField id="folha-dias" rotulo="Dias trabalhados" :erro="erros.dias">
-          <template #default="{ id, descricao, invalido }">
-            <UiInput :id="id" v-model="form.dias" type="number" min="0" max="30" step="1" sufixo="de 30" :invalido="invalido" :aria-describedby="descricao" />
-          </template>
-        </UiField>
+        <HoraAulaLancamento
+          v-if="porHoraAula"
+          v-model:instituicao="form.instituicaoId"
+          v-model:aulas="form.aulas"
+          :instituicoes="cofre.instituicoes.value"
+          :leitura="leitura.horaAula"
+          :erro="erros.instituicaoId"
+          :carregado="cofre.carregado.value"
+        />
+
+        <template v-else>
+          <UiField id="folha-salario" rotulo="Salário bruto" :erro="erros.salario">
+            <template #default="{ id, descricao, invalido }">
+              <UiMoneyInput :id="id" v-model="form.salario" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" autofocus />
+            </template>
+          </UiField>
+
+          <UiField id="folha-dias" rotulo="Dias trabalhados" :erro="erros.dias">
+            <template #default="{ id, descricao, invalido }">
+              <UiInput :id="id" v-model="form.dias" type="number" min="0" max="30" step="1" sufixo="de 30" :invalido="invalido" :aria-describedby="descricao" />
+            </template>
+          </UiField>
+        </template>
 
         <template v-if="form.modalidade === 'empregado'">
           <UiField
@@ -308,11 +377,28 @@ watch(
             id="folha-comissoes"
             rotulo="Comissões"
             opcional
-            ajuda="Valor total do mês, somado ao salário. Não é proporcionalizado pelos dias trabalhados."
-            :erro="erros.comissoes"
+            :grupo="form.comissoesModo === 'separadas'"
+            :ajuda="
+              form.comissoesModo === 'total'
+                ? 'Valor total do mês, somado ao salário. Não é proporcionalizado pelos dias trabalhados.'
+                : 'Lance cada comissão separada (vendas, metas, prêmios). O total é somado aos proventos.'
+            "
+            :erro="form.comissoesModo === 'total' ? erros.comissoes : undefined"
+            :class="form.comissoesModo === 'separadas' && 'col-span-2'"
           >
+            <template #acao>
+              <UiSegmented v-model="form.comissoesModo" compacto nome="folha-comissoes-modo" rotulo="Lançar comissões" :opcoes="modosComissoes" />
+            </template>
             <template #default="{ id, descricao, invalido }">
-              <UiMoneyInput :id="id" v-model="form.comissoes" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
+              <UiMoneyInput
+                v-if="form.comissoesModo === 'total'"
+                :id="id"
+                v-model="form.comissoes"
+                placeholder="0,00"
+                :invalido="invalido"
+                :aria-describedby="descricao"
+              />
+              <ComissoesSeparadas v-else v-model:linhas="form.comissoesLinhas" :leitura="leitura.comissoes" :rotulado-por="`${id}-rotulo`" />
             </template>
           </UiField>
 
@@ -401,7 +487,13 @@ watch(
       <div v-if="!resultado" class="vidro vidro--tracejado rounded-lg">
         <UiEmptyState
           icone="calculadora"
-          :titulo="leitura.vazio ? 'Informe o salário para iniciar' : 'Revise os campos destacados'"
+          :titulo="
+            leitura.vazio
+              ? porHoraAula
+                ? 'Informe as aulas do mês para iniciar'
+                : 'Informe o salário para iniciar'
+              : 'Revise os campos destacados'
+          "
         />
       </div>
 

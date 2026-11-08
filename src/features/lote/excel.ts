@@ -56,6 +56,9 @@ export const COR = {
   warningSoft: 'FFFCF0DA',
   danger: 'FFBA2D43',
   dangerSoft: 'FFFBE8EB',
+  info: 'FF2D6299',
+  infoSoft: 'FFE7EFF8',
+  infoTint: 'FFF4F8FC',
 } as const
 
 /** Manrope raramente esta instalada no Excel; Segoe UI e a mais proxima disponivel. */

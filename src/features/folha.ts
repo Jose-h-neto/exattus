@@ -2,6 +2,7 @@ import { reactive } from 'vue'
 
 import { paraCentavos, paraInteiro } from '@/domain/dinheiro'
 import type { EntradaFolha } from '@/domain/folha'
+import { calcularHoraAula, LIMITE_AULAS, type ResultadoHoraAula, type TabelaHoraAula } from '@/domain/horaAula'
 import {
   calcularHorasExtras,
   lerHoras,
@@ -16,6 +17,22 @@ import type { Modalidade } from '@/domain/inss'
 
 export type ModoHorasExtras = 'valor' | 'horas'
 
+/** mensal: salario x dias / 30; hora_aula: aulas do mes x valor da tabela da instituicao. */
+export type Remuneracao = 'mensal' | 'hora_aula'
+
+/** total: um valor so; separadas: varias comissoes lancadas uma a uma e somadas. */
+export type ModoComissoes = 'total' | 'separadas'
+
+export interface LinhaComissaoFormulario {
+  /** Opcional: ex.: "Vendas loja", "Meta". */
+  descricao: string
+  valor: string
+}
+
+export function novaLinhaComissao(): LinhaComissaoFormulario {
+  return { descricao: '', valor: '' }
+}
+
 export interface LinhaHoraExtraFormulario {
   /** "hh:mm" */
   horas: string
@@ -26,6 +43,11 @@ export interface LinhaHoraExtraFormulario {
 export interface FormularioFolha {
   referencia: string
   modalidade: Modalidade
+  remuneracao: Remuneracao
+  /** Empresa do cofre cuja tabela de hora-aula e usada. */
+  instituicaoId: string
+  /** Quantidade de aulas no mes por tipo de aula (id do tipo -> "80"). */
+  aulas: Record<string, string>
   salario: string
   dias: string
   horasExtrasModo: ModoHorasExtras
@@ -33,7 +55,9 @@ export interface FormularioFolha {
   horasExtrasLinhas: LinhaHoraExtraFormulario[]
   baseValorHora: string
   divisor: string
+  comissoesModo: ModoComissoes
   comissoes: string
+  comissoesLinhas: LinhaComissaoFormulario[]
   dsr: string
   dependentes: string
   adiantamentoSalarial: string
@@ -72,6 +96,9 @@ export function formularioFolhaPadrao(): FormularioFolha {
   return {
     referencia: '',
     modalidade: 'empregado',
+    remuneracao: 'mensal',
+    instituicaoId: '',
+    aulas: {},
     salario: '',
     dias: '30',
     horasExtrasModo: 'valor',
@@ -79,7 +106,9 @@ export function formularioFolhaPadrao(): FormularioFolha {
     horasExtrasLinhas: [novaLinhaHoraExtra()],
     baseValorHora: '',
     divisor: DIVISOR_PADRAO,
+    comissoesModo: 'total',
     comissoes: '',
+    comissoesLinhas: [novaLinhaComissao(), novaLinhaComissao()],
     dsr: '',
     dependentes: '0',
     adiantamentoSalarial: '',
@@ -186,13 +215,83 @@ function interpretarHorasExtras(
   }
 }
 
-export function interpretarFolha(formulario: FormularioFolha) {
+export interface LeituraComissoes {
+  /** Comissoes com valor, na ordem lancada (descricao padrao "Comissao N"). */
+  linhas: { descricao: string; valor: number }[]
+  /** Erro de cada linha do formulario (mesma posicao), quando houver. */
+  erros: (string | undefined)[]
+  total: number
+}
+
+/** Comissoes separadas: linhas sem valor sao ignoradas; o total e a soma. */
+function interpretarComissoes(formulario: FormularioFolha): LeituraComissoes {
+  const linhas: LeituraComissoes['linhas'] = []
+  const erros: LeituraComissoes['erros'] = []
+
+  formulario.comissoesLinhas.forEach((linha, indice) => {
+    const valor = paraCentavos(linha.valor)
+
+    if (valor === null) {
+      erros.push(undefined)
+    } else if (Number.isNaN(valor) || valor < 0) {
+      erros.push('Informe um valor válido.')
+    } else {
+      erros.push(undefined)
+      if (valor > 0) linhas.push({ descricao: linha.descricao.trim() || `Comissão ${indice + 1}`, valor })
+    }
+  })
+
+  return { linhas, erros, total: linhas.reduce((soma, linha) => soma + linha.valor, 0) }
+}
+
+export interface LeituraHoraAula {
+  /** Erros por tipo de aula (id do tipo -> mensagem). */
+  erros: Record<string, string>
+  resultado: ResultadoHoraAula | null
+}
+
+/** Aulas do mes: vazio vale zero; aceita fracao ("80,5"). */
+function interpretarHoraAula(formulario: FormularioFolha, tabela: TabelaHoraAula | null, erros: ErrosFolha): LeituraHoraAula {
+  if (!tabela) {
+    erros.instituicaoId = formulario.instituicaoId
+      ? 'A instituição escolhida não tem tabela de hora-aula.'
+      : 'Escolha a instituição da tabela de hora-aula.'
+
+    return { erros: {}, resultado: null }
+  }
+
+  const errosAulas: Record<string, string> = {}
+  const quantidades: Record<string, number> = {}
+
+  for (const tipo of tabela.tipos) {
+    const quantidade = paraCentavos(formulario.aulas[tipo.id] ?? '')
+
+    if (quantidade === null) continue
+
+    if (Number.isNaN(quantidade) || quantidade > LIMITE_AULAS) {
+      errosAulas[tipo.id] = 'Informe a quantidade de aulas.'
+    } else {
+      quantidades[tipo.id] = quantidade
+    }
+  }
+
+  return { erros: errosAulas, resultado: calcularHoraAula(tabela, quantidades) }
+}
+
+/**
+ * tabelaHoraAula: tabela da instituicao escolhida, usada quando a remuneracao
+ * e por hora-aula (o formulario guarda so o id da instituicao e as quantidades).
+ */
+export function interpretarFolha(formulario: FormularioFolha, tabelaHoraAula: TabelaHoraAula | null = null) {
   const erros: ErrosFolha = {}
-  const salario = paraCentavos(formulario.salario)
-  const dias = paraInteiro(formulario.dias, 0, 30)
+  const empregado = formulario.modalidade === 'empregado'
+  // Professor por hora-aula: sem salario mensal; o mes e sempre completo.
+  const porHoraAula = empregado && formulario.remuneracao === 'hora_aula'
+  const salario = porHoraAula ? 0 : paraCentavos(formulario.salario)
+  const dias = porHoraAula ? 30 : paraInteiro(formulario.dias, 0, 30)
   const dependentes = paraInteiro(formulario.dependentes, 0, 99)
 
-  if (salario !== null && (Number.isNaN(salario) || salario <= 0)) {
+  if (salario !== null && (Number.isNaN(salario) || (!porHoraAula && salario <= 0))) {
     erros.salario = 'Informe um salário bruto maior que zero.'
   }
 
@@ -204,16 +303,23 @@ export function interpretarFolha(formulario: FormularioFolha) {
     erros.dependentes = 'Informe de 0 a 99 dependentes.'
   }
 
+  const leituraHoraAula = porHoraAula ? interpretarHoraAula(formulario, tabelaHoraAula, erros) : null
+
   // Horas extras, comissoes e DSR nao se aplicam ao pro-labore (os campos ficam ocultos).
-  const empregado = formulario.modalidade === 'empregado'
   const emHoras = empregado && formulario.horasExtrasModo === 'horas'
-  const leituraHoras = emHoras ? interpretarHorasExtras(formulario, salario, erros) : null
+  const leituraHoras = emHoras ? interpretarHorasExtras(formulario, porHoraAula ? null : salario, erros) : null
+
+  // Na hora-aula nao ha salario para servir de base do valor-hora: a base precisa ser informada.
+  if (porHoraAula && leituraHoras && leituraHoras.base === null && !erros.baseValorHora && formulario.horasExtrasLinhas.some((linha) => linha.horas)) {
+    erros.baseValorHora = 'Informe a base do valor-hora.'
+  }
   const horasExtras = !empregado
     ? 0
     : leituraHoras
       ? (leituraHoras.resultado?.total ?? 0)
       : valorAdicional(formulario.horasExtras, erros, 'horasExtras')
-  const comissoes = empregado ? valorAdicional(formulario.comissoes, erros, 'comissoes') : 0
+  const leituraComissoes = empregado && formulario.comissoesModo === 'separadas' ? interpretarComissoes(formulario) : null
+  const comissoes = !empregado ? 0 : leituraComissoes ? leituraComissoes.total : valorAdicional(formulario.comissoes, erros, 'comissoes')
   const dsr = empregado ? valorAdicional(formulario.dsr, erros, 'dsr') : 0
 
   // Adiantamentos: descontados depois dos tributos. Pro-labore nao tem ferias.
@@ -225,14 +331,20 @@ export function interpretarFolha(formulario: FormularioFolha) {
   const irrfInformado = valorOpcional(formulario.irrfInformado, erros, 'irrfInformado', 'Informe um valor válido.')
 
   const errosNasLinhas = Boolean(leituraHoras?.erros.some((linha) => linha.horas || linha.adicional))
-  const vazio = salario === null
-  const valido = !vazio && Object.keys(erros).length === 0 && !errosNasLinhas
+  const errosNasAulas = Object.keys(leituraHoraAula?.erros ?? {}).length > 0
+  const errosNasComissoes = Boolean(leituraComissoes?.erros.some(Boolean))
+  // Sem salario (mensal) ou sem nenhuma aula lancada (hora-aula): nada a calcular ainda.
+  const vazio = porHoraAula
+    ? Boolean(leituraHoraAula?.resultado && leituraHoraAula.resultado.quantidade === 0 && !errosNasAulas)
+    : salario === null
+  const valido = !vazio && Object.keys(erros).length === 0 && !errosNasLinhas && !errosNasAulas && !errosNasComissoes
 
   const entrada: EntradaFolha | null = valido
     ? {
         modalidade: formulario.modalidade,
         salario: salario as number,
         dias: dias as number,
+        horaAula: leituraHoraAula?.resultado ?? null,
         horasExtras,
         comissoes,
         dsr,
@@ -245,5 +357,5 @@ export function interpretarFolha(formulario: FormularioFolha) {
       }
     : null
 
-  return { entrada, erros, vazio, horasExtras: leituraHoras }
+  return { entrada, erros, vazio, horasExtras: leituraHoras, horaAula: leituraHoraAula, comissoes: leituraComissoes }
 }

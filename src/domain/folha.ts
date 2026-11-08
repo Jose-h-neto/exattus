@@ -1,4 +1,5 @@
 import { dividirArredondando } from './dinheiro'
+import type { ResultadoHoraAula } from './horaAula'
 import { calcularInss, type Modalidade, type ResultadoInss } from './inss'
 import { calcularIrrf, type ResultadoIrrf } from './irrf'
 import { IRRF_2026, type TabelaInss, type TabelaIrrf } from './parametros'
@@ -8,6 +9,8 @@ export interface EntradaFolha {
   salario: number
   /** Dias trabalhados no mes comercial de 30 dias. */
   dias: number
+  /** Professor por hora-aula: aulas + hora-atividade + DSR, somados aos proventos (salario fica zero). */
+  horaAula: ResultadoHoraAula | null
   /** Valor das horas extras do mes, nao proporcionalizado pelos dias. */
   horasExtras: number
   /** Valor das comissoes do mes, nao proporcionalizado pelos dias. */
@@ -37,7 +40,7 @@ export interface ResultadoFolha {
   /** Valor-dia em centavos fracionarios (salario / 30). */
   valorDia: number
   proporcional: number
-  /** Salario proporcional + horas extras + comissoes + DSR: base do INSS e do IRRF. */
+  /** Salario proporcional + hora-aula + horas extras + comissoes + DSR: base do INSS e do IRRF. */
   totalProventos: number
   baseInss: number
   inss: ResultadoInss
@@ -61,7 +64,8 @@ export function calcularFolha(
   tabelaIrrf: Readonly<TabelaIrrf> = IRRF_2026,
 ): ResultadoFolha {
   const proporcional = dividirArredondando(entrada.salario * entrada.dias, 30)
-  const totalProventos = proporcional + entrada.horasExtras + entrada.comissoes + entrada.dsr
+  const horaAula = entrada.horaAula?.total ?? 0
+  const totalProventos = proporcional + horaAula + entrada.horasExtras + entrada.comissoes + entrada.dsr
   const baseInss = entrada.baseInssManual ?? totalProventos
   const inss = calcularInss(baseInss, tabela, entrada.modalidade)
 

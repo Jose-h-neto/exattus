@@ -7,13 +7,22 @@
 import type { Cell, CellValue, Worksheet } from 'exceljs'
 
 import { brParaIso, paraInputData } from '@/domain/datas'
-import type { TipoLinhaLote } from '@/domain/lote/tipos'
-
-import { CAMPOS_ABA_LOTE, COLUNAS, NOME_ABA, normalizarCabecalho, type CampoAbaLote, type ColunaLote } from './colunas'
+import {
+  CAMPOS_ABA_LOTE,
+  COLUNAS,
+  COLUNAS_HORA_AULA_FIXAS,
+  NOME_ABA,
+  normalizarCabecalho,
+  PREFIXO_AULA,
+  type CampoAbaLote,
+  type ColunaLote,
+  type TipoAbaLote,
+} from './colunas'
 import { carregarExcel } from './excel'
 
 export interface RegistroPlanilha {
-  tipo: TipoLinhaLote
+  /** Aba de origem. */
+  tipo: TipoAbaLote
   /** Numero da linha na planilha. */
   linha: number
   /** Valores por campo (ColunaLote.campo), ja convertidos para texto. */
@@ -112,6 +121,7 @@ function converter(coluna: ColunaLote, celula: Cell): string {
 
   switch (coluna.tipo) {
     case 'moeda':
+    case 'quantidade':
       return moeda(valor)
     case 'inteiro':
       return inteiro(valor)
@@ -132,8 +142,16 @@ function localizarAba(abas: Worksheet[], nome: string): Worksheet | undefined {
   return abas.find((aba) => normalizarCabecalho(aba.name) === alvo)
 }
 
-/** Procura, nas primeiras linhas, a linha de cabecalho que contem a coluna Nome. */
-function lerCabecalho(aba: Worksheet, colunas: ColunaLote[]) {
+/** So a primeira linha do cabecalho conta: a segunda e informativa (ex.: "R$ 64,25 / aula"). */
+function textoCabecalho(celula: Cell): string {
+  return normalizarCabecalho(texto(valorBruto(celula.value)).split('\n')[0] ?? '')
+}
+
+/**
+ * Procura, nas primeiras linhas, a linha de cabecalho que contem a coluna Nome.
+ * extrasComoAulas: na aba Hora-aula, toda coluna desconhecida e um tipo de aula.
+ */
+function lerCabecalho(aba: Worksheet, colunas: ColunaLote[], extrasComoAulas = false) {
   const porCabecalho = new Map(colunas.map((coluna) => [normalizarCabecalho(coluna.cabecalho), coluna]))
   const limite = Math.min(aba.rowCount, 15)
 
@@ -141,9 +159,14 @@ function lerCabecalho(aba: Worksheet, colunas: ColunaLote[]) {
     const mapa = new Map<number, ColunaLote>()
 
     aba.getRow(numero).eachCell((celula, indice) => {
-      const coluna = porCabecalho.get(normalizarCabecalho(texto(valorBruto(celula.value))))
+      const cabecalho = textoCabecalho(celula)
+      const coluna = porCabecalho.get(cabecalho)
 
-      if (coluna) mapa.set(indice, coluna)
+      if (coluna) {
+        mapa.set(indice, coluna)
+      } else if (extrasComoAulas && cabecalho) {
+        mapa.set(indice, { campo: `${PREFIXO_AULA}${cabecalho}`, cabecalho, grupo: 'aulas', tipo: 'quantidade', largura: 12, nota: '' })
+      }
     })
 
     if ([...mapa.values()].some((coluna) => coluna.campo === 'nome')) {
@@ -154,9 +177,9 @@ function lerCabecalho(aba: Worksheet, colunas: ColunaLote[]) {
   return null
 }
 
-function lerAbaDados(aba: Worksheet, tipo: TipoLinhaLote, avisos: string[]): RegistroPlanilha[] {
-  const colunas = COLUNAS[tipo]
-  const cabecalho = lerCabecalho(aba, colunas)
+function lerAbaDados(aba: Worksheet, tipo: TipoAbaLote, avisos: string[]): RegistroPlanilha[] {
+  const colunas = tipo === 'hora_aula' ? COLUNAS_HORA_AULA_FIXAS : COLUNAS[tipo]
+  const cabecalho = lerCabecalho(aba, colunas, tipo === 'hora_aula')
 
   if (!cabecalho) {
     avisos.push(`Aba ${NOME_ABA[tipo]}: não encontrei a linha de cabeçalho com a coluna "Nome".`)
@@ -225,14 +248,16 @@ export async function lerPlanilha(arquivo: File): Promise<PlanilhaLida> {
   const avisos: string[] = []
   const registros: RegistroPlanilha[] = []
 
-  for (const tipo of ['folha', 'ferias'] as const) {
+  const tipos = ['folha', 'hora_aula', 'ferias'] as const
+
+  for (const tipo of tipos) {
     const aba = localizarAba(abas, NOME_ABA[tipo])
 
     if (aba) registros.push(...lerAbaDados(aba, tipo, avisos))
   }
 
-  if (!localizarAba(abas, NOME_ABA.folha) && !localizarAba(abas, NOME_ABA.ferias)) {
-    avisos.push('A planilha não tem as abas "Folha" nem "Férias". Use o modelo do Exattus.')
+  if (!tipos.some((tipo) => localizarAba(abas, NOME_ABA[tipo]))) {
+    avisos.push('A planilha não tem as abas "Folha", "Hora-aula" nem "Férias". Use o modelo do Exattus.')
   }
 
   return { lote: lerAbaLote(localizarAba(abas, 'Lote')), registros, avisos }

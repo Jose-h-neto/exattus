@@ -1,3 +1,4 @@
+import type { TabelaHoraAula } from '../horaAula'
 import type { ItemConferenciaLote } from './conferencia'
 
 export type TipoLinhaLote = 'folha' | 'ferias'
@@ -14,6 +15,8 @@ export interface LinhaLote {
   matricula: string
   nome: string
   cpf: string
+  /** Veio da aba Hora-aula (e uma folha mensal de professor por hora-aula). */
+  horaAula?: boolean
   /** Formulario do calculo (FormularioFolha ou FormularioFerias), para reabrir na tela do calculo. */
   formulario: Record<string, unknown>
   status: StatusLinhaLote
@@ -39,6 +42,8 @@ export interface Empresa {
   /** Somente digitos; vazio quando nao informado. */
   cnpj: string
   criadaEm: string
+  /** Instituicao de ensino: valores da hora-aula, hora-atividade e DSR. */
+  horaAula?: TabelaHoraAula
 }
 
 export interface Lote {

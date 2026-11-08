@@ -4,16 +4,26 @@
  * sempre pelo texto do cabecalho, nunca pela posicao.
  */
 
+import { formatarMoeda } from '@/domain/dinheiro'
+import type { TabelaHoraAula } from '@/domain/horaAula'
 import type { TipoLinhaLote } from '@/domain/lote/tipos'
 
-export type GrupoColuna = 'id' | 'calc' | 'conf'
+export type GrupoColuna = 'id' | 'aulas' | 'calc' | 'conf'
 
-export type TipoColuna = 'texto' | 'moeda' | 'inteiro' | 'horas' | 'data' | 'modalidade'
+export type TipoColuna = 'texto' | 'moeda' | 'inteiro' | 'horas' | 'data' | 'modalidade' | 'quantidade'
+
+/** Aba de dados da planilha: Folha, Ferias ou Hora-aula (folha mensal de professor). */
+export type TipoAbaLote = TipoLinhaLote | 'hora_aula'
+
+/** Campo das colunas de aulas: "aula:<descricao normalizada>". */
+export const PREFIXO_AULA = 'aula:'
 
 export interface ColunaLote {
   /** Chave do registro lido (independente do formulario do calculo). */
   campo: string
   cabecalho: string
+  /** Segunda linha do cabecalho, so informativa (ex.: valor da hora-aula). Ignorada na leitura. */
+  subcabecalho?: string
   grupo: GrupoColuna
   tipo: TipoColuna
   obrigatorio?: boolean
@@ -26,6 +36,8 @@ export interface ColunaLote {
   maximo?: number
   /** Valor monetario que precisa ser maior que zero (salario). */
   positivo?: boolean
+  /** Aceita varios valores somados na mesma celula ("150 + 230,50"): sem validacao numerica no Excel. */
+  aceitaSoma?: boolean
 }
 
 const IDENTIFICACAO: ColunaLote[] = [
@@ -54,7 +66,7 @@ export const COLUNAS_FOLHA: ColunaLote[] = [
   { campo: 'he100', cabecalho: 'HE 100% (hh:mm)', grupo: 'calc', tipo: 'horas', largura: 12, nota: 'Quantidade de horas extras com adicional de 100%. Digite como 04:00.', exemplo: '04:00' },
   { campo: 'divisor', cabecalho: 'Divisor', grupo: 'calc', tipo: 'inteiro', minimo: 1, maximo: 400, largura: 9, nota: 'Divisor do valor-hora. Em branco = 220. Só usado com as colunas de horas.', exemplo: '220' },
   { campo: 'baseValorHora', cabecalho: 'Base valor-hora (R$)', grupo: 'calc', tipo: 'moeda', largura: 15, nota: 'Base para o valor-hora. Em branco = salário base (Súmula 264 do TST).' },
-  { campo: 'comissoes', cabecalho: 'Comissões (R$)', grupo: 'calc', tipo: 'moeda', largura: 14, nota: 'Comissões do mês.' },
+  { campo: 'comissoes', cabecalho: 'Comissões (R$)', grupo: 'calc', tipo: 'moeda', aceitaSoma: true, largura: 16, nota: 'Comissões do mês. Várias comissões separadas: escreva com + (ex.: 150 + 230,50) e o sistema soma, uma linha por comissão.', exemplo: '150 + 230,50' },
   { campo: 'dsr', cabecalho: 'DSR (R$)', grupo: 'calc', tipo: 'moeda', largura: 12, nota: 'DSR sobre horas extras e comissões, como está no holerite.', exemplo: 'R$ 48,00' },
   { campo: 'dependentes', cabecalho: 'Dependentes IRRF', grupo: 'calc', tipo: 'inteiro', minimo: 0, maximo: 99, largura: 12, nota: 'Número de dependentes para o IRRF. Em branco = 0.', exemplo: '1' },
   { campo: 'adiantamentoSalarial', cabecalho: 'Adiantamento salarial (R$)', grupo: 'calc', tipo: 'moeda', largura: 15, nota: 'Vale pago no mês. Descontado do líquido, depois do INSS e do IRRF.', exemplo: 'R$ 1.280,00' },
@@ -76,9 +88,36 @@ export const COLUNAS_FERIAS: ColunaLote[] = [
   ...conferir('Total bruto'),
 ]
 
+/** Colunas fixas da aba Hora-aula (as de aulas vem da tabela da instituicao). */
+export const COLUNAS_HORA_AULA_FIXAS: ColunaLote[] = [
+  ...IDENTIFICACAO,
+  { campo: 'dependentes', cabecalho: 'Dependentes IRRF', grupo: 'calc', tipo: 'inteiro', minimo: 0, maximo: 99, largura: 12, nota: 'Número de dependentes para o IRRF. Em branco = 0.', exemplo: '0' },
+  { campo: 'horasExtras', cabecalho: 'Horas extras (R$)', grupo: 'calc', tipo: 'moeda', largura: 14, nota: 'Valor pronto de horas extras do mês, se houver.' },
+  { campo: 'adiantamentoSalarial', cabecalho: 'Adiantamento salarial (R$)', grupo: 'calc', tipo: 'moeda', largura: 15, nota: 'Vale pago no mês. Descontado do líquido, depois do INSS e do IRRF.' },
+  { campo: 'adiantamentoFerias', cabecalho: 'Adiantamento de férias (R$)', grupo: 'calc', tipo: 'moeda', largura: 15, nota: 'Líquido de férias pago antes. Descontado do líquido, depois do INSS e do IRRF.' },
+  { campo: 'baseInssManual', cabecalho: 'Base INSS manual (R$)', grupo: 'calc', tipo: 'moeda', largura: 15, nota: 'Só preencha se a base do INSS for diferente do total de proventos.' },
+  ...conferir('Total proventos'),
+]
+
+/** Uma coluna por tipo de aula da instituicao, entre a identificacao e os dados do calculo. */
+export function colunasHoraAula(tabela: TabelaHoraAula): ColunaLote[] {
+  const aulas: ColunaLote[] = tabela.tipos.map((tipo) => ({
+    campo: `${PREFIXO_AULA}${normalizarCabecalho(tipo.descricao)}`,
+    cabecalho: tipo.descricao,
+    subcabecalho: `${formatarMoeda(tipo.valor)} / aula`,
+    grupo: 'aulas',
+    tipo: 'quantidade',
+    largura: Math.min(Math.max(tipo.descricao.length * 0.9, 12), 22),
+    nota: `Quantidade de aulas no mês. Valor da hora-aula: ${formatarMoeda(tipo.valor)}. Em branco = nenhuma aula.`,
+    exemplo: '40',
+  }))
+
+  return [...IDENTIFICACAO, ...aulas, ...COLUNAS_HORA_AULA_FIXAS.slice(IDENTIFICACAO.length)]
+}
+
 export const COLUNAS: Record<TipoLinhaLote, ColunaLote[]> = { folha: COLUNAS_FOLHA, ferias: COLUNAS_FERIAS }
 
-export const NOME_ABA: Record<TipoLinhaLote, string> = { folha: 'Folha', ferias: 'Férias' }
+export const NOME_ABA: Record<TipoAbaLote, string> = { folha: 'Folha', ferias: 'Férias', hora_aula: 'Hora-aula' }
 
 /** Campos da aba Lote, em formato de formulario (rotulo e valor ao lado). */
 export interface CampoAbaLote {

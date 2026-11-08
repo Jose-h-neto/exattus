@@ -5,6 +5,8 @@ import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import EmpresaModal from '@/components/lote/EmpresaModal.vue'
 import ImportarLote from '@/components/lote/ImportarLote.vue'
+import TabelaHoraAulaEditor from '@/components/lote/TabelaHoraAulaEditor.vue'
+import UiTabs from '@/components/ui/UiTabs.vue'
 import UiBadge from '@/components/ui/UiBadge.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
@@ -25,6 +27,14 @@ const { gerandoModelo, baixarModelo } = useBaixarModelo()
 const empresaId = computed(() => String(route.params.empresaId ?? ''))
 const empresa = computed(() => obterEmpresa(empresaId.value))
 const lotes = computed(() => lotesDa(empresaId.value))
+
+/** Aba aberta: lotes ou tabela de hora-aula (/cofre/:id?aba=hora-aula, vindo da Folha). */
+const aba = ref(route.query.aba === 'hora-aula' ? 'hora-aula' : 'lotes')
+
+const abas = computed(() => [
+  { id: 'lotes', rotulo: 'Lotes', contador: lotes.value.length },
+  { id: 'hora-aula', rotulo: 'Hora-aula', contador: empresa.value?.horaAula?.tipos.length || undefined },
+])
 
 const importando = ref(false)
 const editando = ref(false)
@@ -77,7 +87,7 @@ async function confirmarExclusaoPasta() {
         · {{ lotes.length }} {{ lotes.length === 1 ? 'lote' : 'lotes' }}
       </template>
       <template #acoes>
-        <UiButton variante="discreto" icone="baixar" :disabled="gerandoModelo" @click="baixarModelo">
+        <UiButton variante="discreto" icone="baixar" :disabled="gerandoModelo" @click="baixarModelo(empresa)">
           {{ gerandoModelo ? 'Gerando…' : 'Baixar modelo' }}
         </UiButton>
         <UiButton variante="discreto" icone="ajustes" @click="editando = true">Editar pasta</UiButton>
@@ -87,6 +97,10 @@ async function confirmarExclusaoPasta() {
     </PageHeader>
 
     <section class="vidro rounded-lg">
+      <UiTabs v-model="aba" :abas="abas" rotulo="Conteúdo da pasta">
+        <template #default="{ ativa }">
+          <TabelaHoraAulaEditor v-if="ativa === 'hora-aula'" :empresa="empresa" />
+          <template v-else>
       <UiEmptyState
         v-if="!lotes.length"
         icone="planilha"
@@ -95,7 +109,7 @@ async function confirmarExclusaoPasta() {
       >
         <div class="flex flex-wrap justify-center gap-2">
           <UiButton variante="primario" icone="enviar" @click="importando = true">Importar planilha</UiButton>
-          <UiButton icone="baixar" :disabled="gerandoModelo" @click="baixarModelo">Baixar modelo</UiButton>
+          <UiButton icone="baixar" :disabled="gerandoModelo" @click="baixarModelo(empresa)">Baixar modelo</UiButton>
         </div>
       </UiEmptyState>
 
@@ -158,6 +172,9 @@ async function confirmarExclusaoPasta() {
           </tbody>
         </table>
       </div>
+          </template>
+        </template>
+      </UiTabs>
     </section>
 
     <ImportarLote :aberto="importando" :empresa-id="empresa.id" @fechar="importando = false" />

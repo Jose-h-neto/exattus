@@ -55,7 +55,7 @@ function situacaoUltimo(pasta: (typeof pastas.value)[number]) {
 <template>
   <PageHeader>
     <template #acoes>
-      <UiButton variante="discreto" icone="baixar" :disabled="gerandoModelo" @click="baixarModelo">
+      <UiButton variante="discreto" icone="baixar" :disabled="gerandoModelo" @click="baixarModelo()">
         {{ gerandoModelo ? 'Gerando…' : 'Baixar modelo' }}
       </UiButton>
       <UiButton icone="adicionar" @click="criando = true">Nova pasta</UiButton>
@@ -73,7 +73,7 @@ function situacaoUltimo(pasta: (typeof pastas.value)[number]) {
     >
       <div class="flex flex-wrap justify-center gap-2">
         <UiButton variante="primario" icone="enviar" @click="importando = true">Importar planilha</UiButton>
-        <UiButton icone="baixar" :disabled="gerandoModelo" @click="baixarModelo">Baixar modelo</UiButton>
+        <UiButton icone="baixar" :disabled="gerandoModelo" @click="baixarModelo()">Baixar modelo</UiButton>
       </div>
     </UiEmptyState>
   </section>
@@ -108,6 +108,9 @@ function situacaoUltimo(pasta: (typeof pastas.value)[number]) {
             <div class="min-w-0 flex-1">
               <h2 class="truncate text-base font-bold text-ink group-hover:text-primary">{{ pasta.empresa.nome }}</h2>
               <p class="num truncate text-xs text-muted">{{ pasta.empresa.cnpj ? formatarCnpj(pasta.empresa.cnpj) : 'CNPJ não informado' }}</p>
+              <UiBadge v-if="pasta.empresa.horaAula?.tipos.length" tom="info" class="mt-1.5">
+                Hora-aula · {{ pasta.empresa.horaAula.tipos.length }} {{ pasta.empresa.horaAula.tipos.length === 1 ? 'tipo' : 'tipos' }}
+              </UiBadge>
             </div>
             <UiIcon nome="seta" :tamanho="18" class="mt-1 shrink-0 text-muted group-hover:text-primary" />
           </div>

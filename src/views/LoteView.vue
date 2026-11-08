@@ -268,7 +268,7 @@ async function confirmarExclusao() {
                       </span>
                     </button>
                   </td>
-                  <td><UiBadge :tom="linha.tipo === 'folha' ? 'marca' : 'neutro'">{{ NOME_ABA[linha.tipo] }}</UiBadge></td>
+                  <td><UiBadge :tom="linha.horaAula ? 'info' : linha.tipo === 'folha' ? 'marca' : 'neutro'">{{ linha.horaAula ? NOME_ABA.hora_aula : NOME_ABA[linha.tipo] }}</UiBadge></td>
                   <td>
                     <UiBadge :tom="STATUS[linha.status].tom">
                       {{ linha.status === 'divergente' ? `${divergentes(linha)} ${divergentes(linha) === 1 ? 'divergência' : 'divergências'}` : ROTULO_STATUS[linha.status] }}

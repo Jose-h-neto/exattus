@@ -8,6 +8,7 @@ import { formatarData } from '@/domain/datas'
 import { paraCentavos } from '@/domain/dinheiro'
 import { calcularFerias } from '@/domain/ferias'
 import { calcularFolha } from '@/domain/folha'
+import { formatarAulas, type TabelaHoraAula } from '@/domain/horaAula'
 import {
   conferirValor,
   situacaoDosItens,
@@ -19,12 +20,18 @@ import type { TabelaInss, TabelaIrrf } from '@/domain/parametros'
 import { formularioFeriasPadrao, interpretarFerias, sugerirPagamento, type FormularioFerias } from '@/features/ferias'
 import { copiarFormularioFolha, formularioFolhaPadrao, interpretarFolha, type FormularioFolha } from '@/features/folha'
 
-import { COLUNAS } from './colunas'
+import { COLUNAS, COLUNAS_HORA_AULA_FIXAS, normalizarCabecalho, PREFIXO_AULA } from './colunas'
 import type { RegistroPlanilha } from './leitura'
 
 export interface Tabelas {
   inss: TabelaInss
   irrf: TabelaIrrf
+}
+
+/** Instituicao (pasta de destino) cuja tabela calcula as linhas da aba Hora-aula. */
+export interface InstituicaoLote {
+  empresaId: string
+  tabela: TabelaHoraAula | null
 }
 
 type Informados = Record<ChaveItemLote, number | null>
@@ -57,7 +64,9 @@ const ROTULOS_FERIAS: Partial<Record<keyof FormularioFerias, string>> = {
 }
 
 function rotuloInformado(registro: RegistroPlanilha, campo: string): string {
-  return COLUNAS[registro.tipo].find((coluna) => coluna.campo === campo)?.cabecalho ?? campo
+  const colunas = registro.tipo === 'hora_aula' ? COLUNAS_HORA_AULA_FIXAS : COLUNAS[registro.tipo]
+
+  return colunas.find((coluna) => coluna.campo === campo)?.cabecalho ?? campo
 }
 
 /** Valor da folha do cliente: aceita negativo (ex.: liquido negativo). */
@@ -143,7 +152,9 @@ function montarLinha(
 ): LinhaLote {
   return {
     id: `${registro.tipo}-${registro.linha}`,
-    tipo: registro.tipo,
+    // Hora-aula e uma folha mensal: abre na tela de Folha.
+    tipo: registro.tipo === 'ferias' ? 'ferias' : 'folha',
+    ...(registro.tipo === 'hora_aula' ? { horaAula: true } : {}),
     linha: registro.linha,
     ...dados,
     formulario,
@@ -169,7 +180,17 @@ function processarFolha(registro: RegistroPlanilha, tolerancia: number, tabelas:
   form.dias = v.dias || '30'
   form.divisor = v.divisor || form.divisor
   form.baseValorHora = v.baseValorHora ?? ''
-  form.comissoes = v.comissoes ?? ''
+
+  // "150 + 230,50": comissoes separadas, somadas (uma linha por comissao no calculo).
+  const comissoes = (v.comissoes ?? '').split(/\s*[+;]\s*/).filter(Boolean)
+
+  if (comissoes.length > 1) {
+    form.comissoesModo = 'separadas'
+    form.comissoesLinhas = comissoes.map((valor) => ({ descricao: '', valor }))
+  } else {
+    form.comissoes = v.comissoes ?? ''
+  }
+
   form.dsr = v.dsr ?? ''
   form.dependentes = v.dependentes || '0'
   form.adiantamentoSalarial = v.adiantamentoSalarial ?? ''
@@ -205,10 +226,29 @@ function processarFolha(registro: RegistroPlanilha, tolerancia: number, tabelas:
     if (erro.horas) erros.push(`${rotulo}: ${erro.horas}`)
   })
 
-  const informados = lerInformados(registro, erros)
-  const resultado = leitura.entrada ? calcularFolha(leitura.entrada, tabelas.inss, tabelas.irrf) : null
+  leitura.comissoes?.erros.forEach((erro, indice) => {
+    if (erro) erros.push(`Comissões: o ${indice + 1}º valor (“${comissoes[indice]}”) é inválido.`)
+  })
 
-  const itens = resultado
+  const resultado = leitura.entrada ? calcularFolha(leitura.entrada, tabelas.inss, tabelas.irrf) : null
+  const itens = conferirFolha(resultado, lerInformados(registro, erros), tolerancia)
+
+  const detalhe = resultado
+    ? [
+        resultado.entrada.modalidade === 'prolabore' ? 'Pró-labore' : 'Empregado',
+        `${resultado.entrada.dias} dias`,
+        resultado.entrada.horasExtras > 0 ? 'horas extras' : '',
+        resultado.entrada.comissoes > 0 ? 'comissões' : '',
+        resultado.entrada.dsr > 0 ? 'DSR' : '',
+        resultado.adiantamentos > 0 ? 'adiantamento' : '',
+      ].filter(Boolean).join(' · ')
+    : 'Folha mensal'
+
+  return montarLinha(registro, dados, copiarFormularioFolha(form) as Record<string, unknown>, erros, itens, detalhe)
+}
+
+function conferirFolha(resultado: ReturnType<typeof calcularFolha> | null, informados: Informados, tolerancia: number) {
+  return resultado
     ? itensConferidos(
         {
           proventos: resultado.totalProventos,
@@ -222,17 +262,59 @@ function processarFolha(registro: RegistroPlanilha, tolerancia: number, tabelas:
         'Total proventos',
       )
     : []
+}
 
-  const detalhe = resultado
-    ? [
-        resultado.entrada.modalidade === 'prolabore' ? 'Pró-labore' : 'Empregado',
-        `${resultado.entrada.dias} dias`,
-        resultado.entrada.horasExtras > 0 ? 'horas extras' : '',
-        resultado.entrada.comissoes > 0 ? 'comissões' : '',
-        resultado.entrada.dsr > 0 ? 'DSR' : '',
-        resultado.adiantamentos > 0 ? 'adiantamento' : '',
-      ].filter(Boolean).join(' · ')
-    : 'Folha mensal'
+/** Professor por hora-aula: as colunas de aulas sao ligadas aos tipos da tabela pela descricao. */
+function processarHoraAula(registro: RegistroPlanilha, tolerancia: number, tabelas: Tabelas, instituicao: InstituicaoLote | null): LinhaLote {
+  const v = registro.valores
+  const erros: string[] = []
+  const dados = identificacao(registro, erros)
+  const form = formularioFolhaPadrao()
+  const tabela = instituicao?.tabela ?? null
+
+  form.referencia = dados.nome
+  form.remuneracao = 'hora_aula'
+  form.instituicaoId = instituicao?.empresaId ?? ''
+  form.dependentes = v.dependentes || '0'
+  form.horasExtras = v.horasExtras ?? ''
+  form.adiantamentoSalarial = v.adiantamentoSalarial ?? ''
+  form.adiantamentoFerias = v.adiantamentoFerias ?? ''
+  form.baseInssManual = v.baseInssManual ?? ''
+  form.inssInformado = v.inssInformado ?? ''
+  form.irrfInformado = v.irrfInformado ?? ''
+
+  if (!tabela) {
+    erros.push('Hora-aula: a pasta escolhida não tem tabela de hora-aula. Cadastre na aba Hora-aula da pasta.')
+  } else {
+    const porDescricao = new Map(tabela.tipos.map((tipo) => [normalizarCabecalho(tipo.descricao), tipo]))
+
+    for (const [campo, valor] of Object.entries(v)) {
+      if (!campo.startsWith(PREFIXO_AULA) || !valor) continue
+
+      const tipo = porDescricao.get(campo.slice(PREFIXO_AULA.length))
+
+      if (tipo) form.aulas[tipo.id] = valor
+      else erros.push(`Coluna “${campo.slice(PREFIXO_AULA.length)}”: não existe esse tipo de aula na tabela da instituição.`)
+    }
+  }
+
+  const leitura = interpretarFolha(form, tabela)
+
+  if (tabela && leitura.vazio) erros.push('Aulas: informe a quantidade de aulas de ao menos um tipo.')
+
+  const { instituicaoId: _instituicao, ...outrosErros } = leitura.erros
+
+  erros.push(...errosDoFormulario(outrosErros, ROTULOS_FOLHA))
+
+  for (const [tipoId, mensagem] of Object.entries(leitura.horaAula?.erros ?? {})) {
+    erros.push(`${tabela?.tipos.find((tipo) => tipo.id === tipoId)?.descricao ?? tipoId}: ${mensagem}`)
+  }
+
+  const resultado = leitura.entrada ? calcularFolha(leitura.entrada, tabelas.inss, tabelas.irrf) : null
+  const itens = conferirFolha(resultado, lerInformados(registro, erros), tolerancia)
+  const aulas = resultado?.entrada.horaAula
+
+  const detalhe = aulas ? `Hora-aula · ${formatarAulas(aulas.quantidade)} aulas · ${aulas.linhas.length} ${aulas.linhas.length === 1 ? 'tipo' : 'tipos'}` : 'Hora-aula'
 
   return montarLinha(registro, dados, copiarFormularioFolha(form) as Record<string, unknown>, erros, itens, detalhe)
 }
@@ -291,8 +373,16 @@ function processarFerias(registro: RegistroPlanilha, tolerancia: number, tabelas
   return montarLinha(registro, dados, { ...form }, erros, itens, detalhe)
 }
 
-export function processarRegistros(registros: readonly RegistroPlanilha[], tolerancia: number, tabelas: Tabelas): LinhaLote[] {
-  return registros.map((registro) =>
-    registro.tipo === 'folha' ? processarFolha(registro, tolerancia, tabelas) : processarFerias(registro, tolerancia, tabelas),
-  )
+export function processarRegistros(
+  registros: readonly RegistroPlanilha[],
+  tolerancia: number,
+  tabelas: Tabelas,
+  instituicao: InstituicaoLote | null = null,
+): LinhaLote[] {
+  return registros.map((registro) => {
+    if (registro.tipo === 'hora_aula') return processarHoraAula(registro, tolerancia, tabelas, instituicao)
+    if (registro.tipo === 'ferias') return processarFerias(registro, tolerancia, tabelas)
+
+    return processarFolha(registro, tolerancia, tabelas)
+  })
 }

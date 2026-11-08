@@ -6,10 +6,13 @@
 
 import type { DataValidation, Worksheet } from 'exceljs'
 
+import { formatarPercentual } from '@/domain/dinheiro'
+import { formatarCnpj, type Empresa } from '@/domain/lote/tipos'
 import { ANO_VIGENCIA } from '@/domain/parametros'
 
 import {
   CAMPOS_ABA_LOTE,
+  colunasHoraAula,
   COLUNAS_FERIAS,
   COLUNAS_FOLHA,
   type ColunaLote,
@@ -36,6 +39,7 @@ export const LINHA_CABECALHO = 4
 
 const GRUPOS: Record<GrupoColuna, { titulo: string; fundo: string; texto: string; dado: string; zebra: string }> = {
   id: { titulo: 'IDENTIFICAÇÃO', fundo: COR.violet100, texto: COR.primaryHover, dado: COR.white, zebra: COR.hover },
+  aulas: { titulo: 'AULAS NO MÊS (QUANTIDADE)', fundo: COR.infoSoft, texto: COR.info, dado: COR.white, zebra: COR.infoTint },
   calc: { titulo: 'DADOS DO CÁLCULO', fundo: COR.sunken, texto: COR.ink, dado: COR.white, zebra: COR.hover },
   conf: { titulo: 'VALORES DA FOLHA PARA CONFERIR', fundo: COR.accentSoft, texto: COR.accentInk, dado: COR.accentTint, zebra: COR.accentSoft },
 }
@@ -47,6 +51,7 @@ const FORMATO_DESCRITO: Record<TipoColuna, string> = {
   horas: 'hh:mm',
   data: 'dd/mm/aaaa',
   modalidade: 'Lista',
+  quantidade: 'Número de aulas',
 }
 
 function descreverFormato(coluna: ColunaLote): string {
@@ -64,6 +69,8 @@ function erroValidacao(titulo: string, mensagem: string): Pick<DataValidation, '
 function validacao(coluna: ColunaLote): DataValidation | null {
   switch (coluna.tipo) {
     case 'moeda':
+      if (coluna.aceitaSoma) return null
+
       return coluna.positivo
         ? { type: 'decimal', operator: 'greaterThan', formulae: [0], ...erroValidacao('Valor inválido', 'Este valor precisa ser maior que zero. Ex.: 3200,00') }
         : { type: 'decimal', operator: 'greaterThanOrEqual', formulae: [0], ...erroValidacao('Valor inválido', 'Informe um valor em reais maior ou igual a zero. Ex.: 5500,00') }
@@ -86,6 +93,8 @@ function validacao(coluna: ColunaLote): DataValidation | null {
       }
     case 'modalidade':
       return { type: 'list', formulae: ['"Empregado,Pró-labore"'], ...erroValidacao('Modalidade inválida', 'Escolha Empregado ou Pró-labore na lista.') }
+    case 'quantidade':
+      return { type: 'decimal', operator: 'between', formulae: [0, 9999], ...erroValidacao('Quantidade inválida', 'Informe o número de aulas no mês, ex.: 40.') }
     default:
       return null
   }
@@ -96,6 +105,7 @@ function formatoNumerico(coluna: ColunaLote): string | undefined {
   if (coluna.tipo === 'data') return FORMATO.data
   if (coluna.tipo === 'horas') return FORMATO.horas
   if (coluna.tipo === 'inteiro') return '0'
+  if (coluna.tipo === 'quantidade') return 'General'
   if (coluna.campo === 'matricula' || coluna.campo === 'cpf') return '@'
 
   return undefined
@@ -147,7 +157,14 @@ function abaDados(aba: Worksheet, titulo: string, colunas: ColunaLote[]) {
     const grupo = GRUPOS[coluna.grupo]
 
     if (coluna.obrigatorio) rotuloObrigatorio(celula, coluna.cabecalho, grupo.texto)
-    else celula.value = coluna.cabecalho
+    else if (coluna.subcabecalho) {
+      celula.value = {
+        richText: [
+          { text: coluna.cabecalho, font: fonte({ size: 9, bold: true, cor: grupo.texto }) },
+          { text: `\n${coluna.subcabecalho}`, font: fonte({ size: 8, cor: COR.muted }) },
+        ],
+      }
+    } else celula.value = coluna.cabecalho
 
     celula.font = fonte({ size: 9, bold: true, cor: grupo.texto })
     celula.fill = preenchimento(grupo.fundo)
@@ -162,7 +179,7 @@ function abaDados(aba: Worksheet, titulo: string, colunas: ColunaLote[]) {
     aba.getColumn(indice + 1).width = coluna.largura
   })
 
-  aba.getRow(LINHA_CABECALHO).height = 40
+  aba.getRow(LINHA_CABECALHO).height = colunas.some((coluna) => coluna.subcabecalho) ? 48 : 40
 
   // Area de dados: zebrado, bordas, formatos e validacao.
   const validacoes = colunas.map(validacao)
@@ -191,7 +208,15 @@ function abaDados(aba: Worksheet, titulo: string, colunas: ColunaLote[]) {
   aba.autoFilter = { from: { row: LINHA_CABECALHO, column: 1 }, to: { row: LINHA_CABECALHO, column: total } }
 }
 
-function abaInstrucoes(aba: Worksheet) {
+interface ContextoModelo {
+  empresa?: Empresa
+  /** Colunas da aba Hora-aula, quando a empresa tem tabela de hora-aula. */
+  colunasHoraAula: ColunaLote[] | null
+}
+
+function abaInstrucoes(aba: Worksheet, contexto: ContextoModelo) {
+  const tabelaHoraAula = contexto.colunasHoraAula ? contexto.empresa?.horaAula : undefined
+
   aba.columns = [{ width: 3 }, { width: 28 }, { width: 13 }, { width: 15 }, { width: 18 }, { width: 70 }]
   faixaTitulo(aba, 6, 'Conferência em lote  ·  Como preencher', 'Preencha a planilha, salve e importe no Exattus em Registros › Cofre de lotes › Importar planilha')
 
@@ -225,7 +250,9 @@ function abaInstrucoes(aba: Worksheet) {
 
   const passos: [string, string, string][] = [
     ['1', 'Aba Lote', 'Informe a empresa, o CNPJ e a competência. O CNPJ coloca o lote na pasta certa do cofre.'],
-    ['2', 'Aba Folha e/ou Férias', 'Uma linha por funcionário. Pode usar só uma das abas; a aba vazia é ignorada.'],
+    tabelaHoraAula
+      ? ['2', 'Abas Folha, Hora-aula e Férias', 'Uma linha por funcionário. Professores por hora-aula vão na aba Hora-aula. Abas vazias são ignoradas.']
+      : ['2', 'Aba Folha e/ou Férias', 'Uma linha por funcionário. Pode usar só uma das abas; a aba vazia é ignorada.'],
     ['3', 'Valores para conferir', 'Nas colunas rosa, copie o que está na folha do cliente. O sistema compara com o próprio cálculo.'],
     ['4', 'Importe no Exattus', 'Salve o arquivo (.xlsx) e importe. Você vê os erros por linha antes de confirmar.'],
   ]
@@ -252,6 +279,9 @@ function abaInstrucoes(aba: Worksheet) {
 
   const legenda: [GrupoColuna, string, string][] = [
     ['id', 'Identificação', 'Quem é o funcionário. Só o Nome é obrigatório.'],
+    ...(tabelaHoraAula
+      ? [['aulas', 'Aulas no mês', 'Aba Hora-aula: quantidade de aulas no mês de cada tipo. O valor vem da tabela da instituição.'] as [GrupoColuna, string, string]]
+      : []),
     ['calc', 'Dados do cálculo', 'O que o Exattus usa para calcular. As tabelas de INSS e IRRF já estão no sistema.'],
     ['conf', 'Valores da folha para conferir', 'O que veio da folha do cliente. Cada valor fica como Confere ou Divergente.'],
   ]
@@ -319,11 +349,29 @@ function abaInstrucoes(aba: Worksheet) {
   }
 
   dicionario('Folha', COLUNAS_FOLHA)
+
+  if (tabelaHoraAula && contexto.colunasHoraAula) {
+    dicionario('Hora-aula', contexto.colunasHoraAula)
+    linha--
+    aba.mergeCells(linha, 2, linha, 6)
+    textoLivre(
+      2,
+      `Regras de ${contexto.empresa?.nome}: hora-atividade de ${formatarPercentual(tabelaHoraAula.horaAtividade)} sobre o total das aulas; ` +
+        `DSR = (total das aulas + hora-atividade) ÷ ${tabelaHoraAula.divisorDsr}. O total entra nos proventos (base do INSS e do IRRF).`,
+      { cor: COR.info, bold: true, size: 9 },
+    ).fill = preenchimento(COR.infoSoft)
+    aba.getRow(linha).height = 30
+    linha += 2
+  }
+
   dicionario('Férias', COLUNAS_FERIAS)
 
   titulo('Dicas')
 
   const dicas = [
+    tabelaHoraAula
+      ? 'Os tipos de aula da aba Hora-aula vêm da tabela da instituição. Para mudar valores ou incluir tipos, edite a tabela no Exattus e baixe o modelo de novo.'
+      : 'Para professores por hora-aula, baixe o modelo de dentro da pasta da instituição (Cofre de lotes): ele traz a aba Hora-aula com os tipos de aula.',
     'Valores em reais podem ser digitados como 5500 ou 5500,00. Datas como 06/07/2026. Horas como 10:30.',
     'Não mude o nome dos cabeçalhos: o Exattus encontra as colunas pelo nome. A ordem e colunas extras não atrapalham.',
     'Linhas totalmente em branco são ignoradas. Você pode deixar linhas vazias no meio.',
@@ -338,7 +386,7 @@ function abaInstrucoes(aba: Worksheet) {
   }
 }
 
-function abaLote(aba: Worksheet) {
+function abaLote(aba: Worksheet, empresa?: Empresa) {
   aba.columns = [{ width: 3 }, { width: 24 }, { width: 38 }, { width: 3 }, { width: 62 }]
   faixaTitulo(aba, 5, 'Dados do lote', 'Uma conferência em lote por empresa e competência. Preencha só a coluna branca.')
 
@@ -367,6 +415,10 @@ function abaLote(aba: Worksheet) {
     valor.font = fonte({ size: 11 })
     valor.alignment = { vertical: 'middle', indent: 1 }
     valor.numFmt = campo.tipo === 'moeda' ? FORMATO.moeda : '@'
+
+    // Modelo baixado de dentro de uma pasta: ja vem com a empresa preenchida.
+    if (empresa && campo.campo === 'empresa') valor.value = empresa.nome
+    if (empresa?.cnpj && campo.campo === 'cnpj') valor.value = formatarCnpj(empresa.cnpj)
 
     if (campo.tipo === 'moeda') {
       valor.dataValidation = { type: 'decimal', operator: 'greaterThanOrEqual', formulae: [0], ...erroValidacao('Valor inválido', 'Informe um valor em reais maior ou igual a zero.') }
@@ -397,13 +449,22 @@ function abaLote(aba: Worksheet) {
   aba.getRow(linha).height = 34
 }
 
-export async function gerarModelo(): Promise<Blob> {
+/**
+ * empresa: modelo baixado de dentro de uma pasta do cofre. Preenche a aba Lote
+ * e, se a empresa tem tabela de hora-aula, inclui a aba Hora-aula com uma
+ * coluna por tipo de aula.
+ */
+export async function gerarModelo(empresa?: Empresa): Promise<Blob> {
   const pasta = await novaPasta()
+  const colunasAula = empresa?.horaAula?.tipos.length ? colunasHoraAula(empresa.horaAula) : null
 
   pasta.title = 'Modelo de conferência em lote'
 
-  abaInstrucoes(pasta.addWorksheet('Instruções', { properties: { tabColor: { argb: COR.primary } }, views: [{ showGridLines: false }] }))
-  abaLote(pasta.addWorksheet('Lote', { properties: { tabColor: { argb: COR.primaryHover } }, views: [{ showGridLines: false }] }))
+  abaInstrucoes(pasta.addWorksheet('Instruções', { properties: { tabColor: { argb: COR.primary } }, views: [{ showGridLines: false }] }), {
+    empresa,
+    colunasHoraAula: colunasAula,
+  })
+  abaLote(pasta.addWorksheet('Lote', { properties: { tabColor: { argb: COR.primaryHover } }, views: [{ showGridLines: false }] }), empresa)
 
   const opcoesDados = (cor: string) => ({
     properties: { tabColor: { argb: cor } },
@@ -412,6 +473,13 @@ export async function gerarModelo(): Promise<Blob> {
   })
 
   abaDados(pasta.addWorksheet('Folha', opcoesDados(COR.primary)), 'Conferência em lote  ·  Folha mensal', COLUNAS_FOLHA)
+
+  if (colunasAula && empresa?.horaAula) {
+    const regra = `hora-atividade ${formatarPercentual(empresa.horaAula.horaAtividade)} · DSR (aulas + hora-atividade) ÷ ${empresa.horaAula.divisorDsr}`
+
+    abaDados(pasta.addWorksheet('Hora-aula', opcoesDados(COR.info)), `Hora-aula  ·  ${empresa.nome}  ·  ${regra}`, colunasAula)
+  }
+
   abaDados(pasta.addWorksheet('Férias', opcoesDados(COR.accent)), 'Conferência em lote  ·  Férias', COLUNAS_FERIAS)
 
   pasta.views = [{ x: 0, y: 0, width: 20000, height: 12000, firstSheet: 0, activeTab: 0, visibility: 'visible' }]

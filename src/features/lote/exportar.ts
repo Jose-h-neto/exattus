@@ -35,7 +35,7 @@ const COR_STATUS: Record<StatusLinhaLote, { fundo: string; texto: string }> = {
 
 const IDENTIFICACAO = [
   { cabecalho: 'Linha', largura: 7 },
-  { cabecalho: 'Tipo', largura: 8 },
+  { cabecalho: 'Tipo', largura: 10 },
   { cabecalho: 'Matrícula', largura: 11 },
   { cabecalho: 'Nome', largura: 30 },
   { cabecalho: 'CPF', largura: 15 },
@@ -129,7 +129,7 @@ export async function exportarLote(lote: Lote, empresa: Empresa): Promise<Blob> 
 
     const valores: (string | number | null)[] = [
       linha.linha,
-      NOME_ABA[linha.tipo],
+      linha.horaAula ? NOME_ABA.hora_aula : NOME_ABA[linha.tipo],
       linha.matricula,
       linha.nome,
       linha.cpf,

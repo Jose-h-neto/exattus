@@ -1,8 +1,14 @@
 import { computed, ref } from 'vue'
 
+import { tabelaHoraAulaPadrao, type TabelaHoraAula } from '@/domain/horaAula'
 import type { CabecalhoLote, Empresa, LinhaLote, Lote } from '@/domain/lote/tipos'
 import { normalizarCnpj, resumirLinhas } from '@/domain/lote/tipos'
+import { gravarJson, lerJson } from '@/lib/armazenamento'
 import { aplicar, listar, LOJAS, obter } from '@/lib/banco'
+
+/** Marca que a instituicao pre-cadastrada ja foi criada (nao volta se o usuario excluir). */
+const CHAVE_SEMENTE = 'exattus:semente-hora-aula'
+const INSTITUICAO_PADRAO = 'Alvorada-Bianchi'
 
 /*
  * Cofre de lotes: pastas por empresa, cada uma com suas conferencias em lote.
@@ -36,10 +42,35 @@ function ordenarEmpresas(lista: Empresa[]): Empresa[] {
   return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 
+/** Pre-cadastra a instituicao com a tabela de hora-aula informada pelo usuario, uma unica vez. */
+async function semearInstituicao(lista: Empresa[]): Promise<Empresa[]> {
+  if (lerJson(CHAVE_SEMENTE, (valor): valor is true => valor === true)) return lista
+
+  const existe = lista.some((empresa) => empresa.nome.localeCompare(INSTITUICAO_PADRAO, 'pt-BR', { sensitivity: 'base' }) === 0)
+
+  if (existe) {
+    gravarJson(CHAVE_SEMENTE, true)
+    return lista
+  }
+
+  const empresa: Empresa = {
+    id: novoId(),
+    nome: INSTITUICAO_PADRAO,
+    cnpj: '',
+    criadaEm: new Date().toISOString(),
+    horaAula: tabelaHoraAulaPadrao(),
+  }
+
+  await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
+  gravarJson(CHAVE_SEMENTE, true)
+
+  return [...lista, empresa]
+}
+
 function carregar(): Promise<void> {
   carregando ??= Promise.all([listar<Empresa>(LOJAS.empresas), listar<CabecalhoLote>(LOJAS.lotes)])
-    .then(([listaEmpresas, listaLotes]) => {
-      empresas.value = ordenarEmpresas(listaEmpresas)
+    .then(async ([listaEmpresas, listaLotes]) => {
+      empresas.value = ordenarEmpresas(await semearInstituicao(listaEmpresas))
       lotes.value = listaLotes
       erro.value = null
     })
@@ -63,6 +94,8 @@ export function useCofre() {
     erro,
     pronto: carregar,
     totalEmpresas: computed(() => empresas.value.length),
+    /** Instituicoes com tabela de hora-aula cadastrada. */
+    instituicoes: computed(() => empresas.value.filter((empresa) => empresa.horaAula?.tipos.length)),
 
     obterEmpresa(id: string): Empresa | undefined {
       return empresas.value.find((empresa) => empresa.id === id)
@@ -104,6 +137,19 @@ export function useCofre() {
 
       await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
       empresas.value = ordenarEmpresas(empresas.value.map((item) => (item.id === id ? empresa : item)))
+    },
+
+    /** Grava (ou remove, com null) a tabela de hora-aula da empresa. */
+    async salvarHoraAula(id: string, tabela: TabelaHoraAula | null) {
+      const atual = empresas.value.find((empresa) => empresa.id === id)
+
+      if (!atual) return
+
+      const { horaAula: _anterior, ...resto } = atual
+      const empresa: Empresa = tabela ? { ...resto, horaAula: tabela } : resto
+
+      await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
+      empresas.value = empresas.value.map((item) => (item.id === id ? empresa : item))
     },
 
     /** Exclui a pasta e todos os lotes dela. */
