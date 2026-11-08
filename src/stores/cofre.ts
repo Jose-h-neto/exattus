@@ -1,0 +1,172 @@
+import { computed, ref } from 'vue'
+
+import type { CabecalhoLote, Empresa, LinhaLote, Lote } from '@/domain/lote/tipos'
+import { normalizarCnpj, resumirLinhas } from '@/domain/lote/tipos'
+import { aplicar, listar, LOJAS, obter } from '@/lib/banco'
+
+/*
+ * Cofre de lotes: pastas por empresa, cada uma com suas conferencias em lote.
+ * Empresas e cabecalhos dos lotes ficam em memoria; as linhas de cada lote so
+ * sao lidas quando o lote e aberto.
+ */
+
+interface LinhasGravadas {
+  loteId: string
+  linhas: LinhaLote[]
+}
+
+const empresas = ref<Empresa[]>([])
+const lotes = ref<CabecalhoLote[]>([])
+const carregado = ref(false)
+const erro = ref<string | null>(null)
+
+let carregando: Promise<void> | null = null
+
+function novoId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+function mensagem(causa: unknown): string {
+  return causa instanceof Error ? causa.message : 'Não foi possível acessar o armazenamento do navegador.'
+}
+
+function ordenarEmpresas(lista: Empresa[]): Empresa[] {
+  return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+}
+
+function carregar(): Promise<void> {
+  carregando ??= Promise.all([listar<Empresa>(LOJAS.empresas), listar<CabecalhoLote>(LOJAS.lotes)])
+    .then(([listaEmpresas, listaLotes]) => {
+      empresas.value = ordenarEmpresas(listaEmpresas)
+      lotes.value = listaLotes
+      erro.value = null
+    })
+    .catch((causa) => {
+      erro.value = mensagem(causa)
+      carregando = null
+    })
+    .finally(() => {
+      carregado.value = true
+    })
+
+  return carregando
+}
+
+export function useCofre() {
+  void carregar()
+
+  return {
+    empresas,
+    carregado,
+    erro,
+    pronto: carregar,
+    totalEmpresas: computed(() => empresas.value.length),
+
+    obterEmpresa(id: string): Empresa | undefined {
+      return empresas.value.find((empresa) => empresa.id === id)
+    },
+
+    empresaPorCnpj(cnpj: string): Empresa | undefined {
+      const digitos = normalizarCnpj(cnpj)
+
+      return digitos ? empresas.value.find((empresa) => empresa.cnpj === digitos) : undefined
+    },
+
+    /** Lotes da empresa, do mais recente (competencia e data de importacao) para o mais antigo. */
+    lotesDa(empresaId: string): CabecalhoLote[] {
+      return lotes.value
+        .filter((lote) => lote.empresaId === empresaId)
+        .sort((a, b) => b.competencia.localeCompare(a.competencia) || b.criadoEm.localeCompare(a.criadoEm))
+    },
+
+    async criarEmpresa(dados: { nome: string; cnpj: string }): Promise<Empresa> {
+      const empresa: Empresa = {
+        id: novoId(),
+        nome: dados.nome.trim(),
+        cnpj: normalizarCnpj(dados.cnpj),
+        criadaEm: new Date().toISOString(),
+      }
+
+      await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
+      empresas.value = ordenarEmpresas([...empresas.value, empresa])
+
+      return empresa
+    },
+
+    async atualizarEmpresa(id: string, dados: { nome: string; cnpj: string }) {
+      const atual = empresas.value.find((empresa) => empresa.id === id)
+
+      if (!atual) return
+
+      const empresa: Empresa = { ...atual, nome: dados.nome.trim(), cnpj: normalizarCnpj(dados.cnpj) }
+
+      await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
+      empresas.value = ordenarEmpresas(empresas.value.map((item) => (item.id === id ? empresa : item)))
+    },
+
+    /** Exclui a pasta e todos os lotes dela. */
+    async excluirEmpresa(id: string) {
+      const daEmpresa = lotes.value.filter((lote) => lote.empresaId === id)
+
+      await aplicar([
+        { loja: LOJAS.empresas, excluir: id },
+        ...daEmpresa.flatMap((lote) => [
+          { loja: LOJAS.lotes, excluir: lote.id },
+          { loja: LOJAS.linhasLote, excluir: lote.id },
+        ]),
+      ])
+
+      empresas.value = empresas.value.filter((empresa) => empresa.id !== id)
+      lotes.value = lotes.value.filter((lote) => lote.empresaId !== id)
+    },
+
+    async salvarLote(dados: Omit<Lote, 'id' | 'criadoEm' | 'resumo'>): Promise<CabecalhoLote> {
+      const { linhas, ...resto } = dados
+      const cabecalho: CabecalhoLote = {
+        ...resto,
+        id: novoId(),
+        criadoEm: new Date().toISOString(),
+        resumo: resumirLinhas(linhas),
+      }
+
+      await aplicar([
+        { loja: LOJAS.lotes, gravar: cabecalho },
+        { loja: LOJAS.linhasLote, gravar: { loteId: cabecalho.id, linhas } satisfies LinhasGravadas },
+      ])
+
+      lotes.value = [...lotes.value, cabecalho]
+
+      return cabecalho
+    },
+
+    async obterLote(id: string): Promise<Lote | null> {
+      await carregar()
+
+      const cabecalho = lotes.value.find((lote) => lote.id === id)
+
+      if (!cabecalho) return null
+
+      const gravadas = await obter<LinhasGravadas>(LOJAS.linhasLote, id)
+
+      return { ...cabecalho, linhas: gravadas?.linhas ?? [] }
+    },
+
+    /** Um funcionario de um lote, para reabrir na tela do calculo. */
+    async obterLinha(loteId: string, linhaId: string): Promise<LinhaLote | null> {
+      const gravadas = await obter<LinhasGravadas>(LOJAS.linhasLote, loteId)
+
+      return gravadas?.linhas.find((linha) => linha.id === linhaId) ?? null
+    },
+
+    async excluirLote(id: string) {
+      await aplicar([
+        { loja: LOJAS.lotes, excluir: id },
+        { loja: LOJAS.linhasLote, excluir: id },
+      ])
+
+      lotes.value = lotes.value.filter((lote) => lote.id !== id)
+    },
+  }
+}
