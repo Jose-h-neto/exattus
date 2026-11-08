@@ -1,0 +1,298 @@
+/*
+ * Calcula cada funcionario da planilha com o motor do sistema. Cada linha vira
+ * o mesmo formulario das telas de Folha e Ferias, passa pelas mesmas validacoes
+ * (interpretarFolha / interpretarFerias) e e conferida com os valores da folha.
+ */
+
+import { formatarData } from '@/domain/datas'
+import { paraCentavos } from '@/domain/dinheiro'
+import { calcularFerias } from '@/domain/ferias'
+import { calcularFolha } from '@/domain/folha'
+import {
+  conferirValor,
+  situacaoDosItens,
+  type ChaveItemLote,
+  type ItemConferenciaLote,
+} from '@/domain/lote/conferencia'
+import type { LinhaLote } from '@/domain/lote/tipos'
+import type { TabelaInss, TabelaIrrf } from '@/domain/parametros'
+import { formularioFeriasPadrao, interpretarFerias, sugerirPagamento, type FormularioFerias } from '@/features/ferias'
+import { copiarFormularioFolha, formularioFolhaPadrao, interpretarFolha, type FormularioFolha } from '@/features/folha'
+
+import { COLUNAS } from './colunas'
+import type { RegistroPlanilha } from './leitura'
+
+export interface Tabelas {
+  inss: TabelaInss
+  irrf: TabelaIrrf
+}
+
+type Informados = Record<ChaveItemLote, number | null>
+
+const ROTULOS_FOLHA: Partial<Record<keyof FormularioFolha, string>> = {
+  salario: 'Salário base',
+  dias: 'Dias trabalhados',
+  horasExtras: 'Horas extras (R$)',
+  baseValorHora: 'Base valor-hora (R$)',
+  divisor: 'Divisor',
+  comissoes: 'Comissões (R$)',
+  dsr: 'DSR (R$)',
+  dependentes: 'Dependentes IRRF',
+  adiantamentoSalarial: 'Adiantamento salarial (R$)',
+  adiantamentoFerias: 'Adiantamento de férias (R$)',
+  baseInssManual: 'Base INSS manual (R$)',
+  inssInformado: 'INSS',
+  irrfInformado: 'IRRF',
+}
+
+const ROTULOS_FERIAS: Partial<Record<keyof FormularioFerias, string>> = {
+  salario: 'Salário base',
+  medias: 'Médias (R$)',
+  diasFerias: 'Dias de férias',
+  diasAbono: 'Dias de abono',
+  dependentes: 'Dependentes IRRF',
+  dataInicio: 'Início do gozo',
+  dataPagamento: 'Data de pagamento',
+  inssManual: 'INSS manual (R$)',
+}
+
+function rotuloInformado(registro: RegistroPlanilha, campo: string): string {
+  return COLUNAS[registro.tipo].find((coluna) => coluna.campo === campo)?.cabecalho ?? campo
+}
+
+/** Valor da folha do cliente: aceita negativo (ex.: liquido negativo). */
+function lerInformado(texto: string): number | null {
+  const limpo = texto.trim()
+  const negativo = limpo.startsWith('-')
+  const valor = paraCentavos(negativo ? limpo.slice(1) : limpo)
+
+  if (valor === null || Number.isNaN(valor)) return valor
+
+  return negativo ? -valor : valor
+}
+
+function lerInformados(registro: RegistroPlanilha, erros: string[]): Informados {
+  const campos: Record<ChaveItemLote, string> = {
+    proventos: 'proventosInformado',
+    descontos: 'descontosInformado',
+    inss: 'inssInformado',
+    irrf: 'irrfInformado',
+    liquido: 'liquidoInformado',
+  }
+
+  const informados = {} as Informados
+
+  for (const [chave, campo] of Object.entries(campos) as [ChaveItemLote, string][]) {
+    const valor = lerInformado(registro.valores[campo] ?? '')
+
+    if (valor !== null && Number.isNaN(valor)) {
+      erros.push(`${rotuloInformado(registro, campo)}: informe um valor válido.`)
+      informados[chave] = null
+    } else {
+      informados[chave] = valor
+    }
+  }
+
+  return informados
+}
+
+function itensConferidos(
+  calculados: Record<ChaveItemLote, number>,
+  informados: Informados,
+  tolerancia: number,
+  rotuloBruto: string,
+): ItemConferenciaLote[] {
+  const descricoes: Record<ChaveItemLote, string> = {
+    proventos: rotuloBruto,
+    descontos: 'Total descontos',
+    inss: 'INSS',
+    irrf: 'IRRF',
+    liquido: 'Líquido',
+  }
+
+  return (Object.keys(descricoes) as ChaveItemLote[]).map((chave) => ({
+    chave,
+    descricao: descricoes[chave],
+    ...conferirValor(calculados[chave], informados[chave], tolerancia),
+  }))
+}
+
+function errosDoFormulario<T extends string>(erros: Partial<Record<T, string>>, rotulos: Partial<Record<T, string>>): string[] {
+  return (Object.entries(erros) as [T, string][]).map(([campo, mensagem]) => `${rotulos[campo] ?? campo}: ${mensagem}`)
+}
+
+function identificacao(registro: RegistroPlanilha, erros: string[]) {
+  const nome = (registro.valores.nome ?? '').trim()
+
+  if (!nome) erros.push('Nome: informe o nome do funcionário.')
+
+  return {
+    nome: nome || `Linha ${registro.linha}`,
+    matricula: (registro.valores.matricula ?? '').trim(),
+    cpf: (registro.valores.cpf ?? '').trim(),
+  }
+}
+
+function montarLinha(
+  registro: RegistroPlanilha,
+  dados: ReturnType<typeof identificacao>,
+  formulario: Record<string, unknown>,
+  erros: string[],
+  itens: ItemConferenciaLote[],
+  detalhe: string,
+): LinhaLote {
+  return {
+    id: `${registro.tipo}-${registro.linha}`,
+    tipo: registro.tipo,
+    linha: registro.linha,
+    ...dados,
+    formulario,
+    status: erros.length ? 'erro' : situacaoDosItens(itens),
+    erros,
+    itens,
+    detalhe,
+  }
+}
+
+function processarFolha(registro: RegistroPlanilha, tolerancia: number, tabelas: Tabelas): LinhaLote {
+  const v = registro.valores
+  const erros: string[] = []
+  const dados = identificacao(registro, erros)
+  const form = formularioFolhaPadrao()
+
+  form.referencia = dados.nome
+
+  if (v.modalidade === 'empregado' || v.modalidade === 'prolabore') form.modalidade = v.modalidade
+  else erros.push('Modalidade: escolha Empregado ou Pró-labore.')
+
+  form.salario = v.salario ?? ''
+  form.dias = v.dias || '30'
+  form.divisor = v.divisor || form.divisor
+  form.baseValorHora = v.baseValorHora ?? ''
+  form.comissoes = v.comissoes ?? ''
+  form.dsr = v.dsr ?? ''
+  form.dependentes = v.dependentes || '0'
+  form.adiantamentoSalarial = v.adiantamentoSalarial ?? ''
+  form.adiantamentoFerias = v.adiantamentoFerias ?? ''
+  form.baseInssManual = v.baseInssManual ?? ''
+  form.inssInformado = v.inssInformado ?? ''
+  form.irrfInformado = v.irrfInformado ?? ''
+
+  // Horas extras: em valor (R$) ou em horas (HE 50% / HE 100%), nunca os dois.
+  const linhasHoras = [
+    { horas: v.he50 ?? '', adicional: '50' },
+    { horas: v.he100 ?? '', adicional: '100' },
+  ].filter((linha) => linha.horas)
+
+  if (linhasHoras.length) {
+    if (v.horasExtras) erros.push('Horas extras: preencha o valor (R$) ou as horas (HE 50% / HE 100%), não os dois.')
+
+    form.horasExtrasModo = 'horas'
+    form.horasExtrasLinhas = linhasHoras
+  } else {
+    form.horasExtras = v.horasExtras ?? ''
+  }
+
+  const leitura = interpretarFolha(form)
+
+  if (leitura.vazio) erros.push('Salário base: informe o salário.')
+
+  erros.push(...errosDoFormulario(leitura.erros, ROTULOS_FOLHA))
+
+  leitura.horasExtras?.erros.forEach((erro, indice) => {
+    const rotulo = linhasHoras[indice]?.adicional === '100' ? 'HE 100%' : 'HE 50%'
+
+    if (erro.horas) erros.push(`${rotulo}: ${erro.horas}`)
+  })
+
+  const informados = lerInformados(registro, erros)
+  const resultado = leitura.entrada ? calcularFolha(leitura.entrada, tabelas.inss, tabelas.irrf) : null
+
+  const itens = resultado
+    ? itensConferidos(
+        {
+          proventos: resultado.totalProventos,
+          descontos: resultado.totalDescontos,
+          inss: resultado.inss.total,
+          irrf: resultado.irrf.escolhida.irrf,
+          liquido: resultado.liquido,
+        },
+        informados,
+        tolerancia,
+        'Total proventos',
+      )
+    : []
+
+  const detalhe = resultado
+    ? [
+        resultado.entrada.modalidade === 'prolabore' ? 'Pró-labore' : 'Empregado',
+        `${resultado.entrada.dias} dias`,
+        resultado.entrada.horasExtras > 0 ? 'horas extras' : '',
+        resultado.entrada.comissoes > 0 ? 'comissões' : '',
+        resultado.entrada.dsr > 0 ? 'DSR' : '',
+        resultado.adiantamentos > 0 ? 'adiantamento' : '',
+      ].filter(Boolean).join(' · ')
+    : 'Folha mensal'
+
+  return montarLinha(registro, dados, copiarFormularioFolha(form) as Record<string, unknown>, erros, itens, detalhe)
+}
+
+function processarFerias(registro: RegistroPlanilha, tolerancia: number, tabelas: Tabelas): LinhaLote {
+  const v = registro.valores
+  const erros: string[] = []
+  const dados = identificacao(registro, erros)
+  const form = formularioFeriasPadrao()
+
+  form.referencia = dados.nome
+  form.salario = v.salario ?? ''
+  form.medias = v.medias ?? ''
+  form.diasFerias = v.diasFerias || '30'
+  form.dependentes = v.dependentes || '0'
+  form.dataInicio = v.dataInicio ?? ''
+  form.dataPagamento = v.dataPagamento ?? ''
+  form.pagamentoAutomatico = !v.dataPagamento
+  form.inssManual = v.inssManual ?? ''
+
+  const abono = (v.diasAbono ?? '').trim()
+
+  form.possuiAbono = abono !== '' && abono !== '0'
+  form.diasAbono = form.possuiAbono ? abono : form.diasAbono
+
+  if (form.pagamentoAutomatico) sugerirPagamento(form)
+
+  const leitura = interpretarFerias(form)
+
+  erros.push(...leitura.pendentes.map((pendente) => `${pendente}.`))
+  erros.push(...errosDoFormulario(leitura.erros, ROTULOS_FERIAS))
+
+  const informados = lerInformados(registro, erros)
+  const resultado = leitura.entrada ? calcularFerias(leitura.entrada, tabelas.inss, tabelas.irrf) : null
+
+  const itens = resultado
+    ? itensConferidos(
+        {
+          proventos: resultado.totalBruto,
+          descontos: resultado.totalDescontos,
+          inss: resultado.inssUsado,
+          irrf: resultado.irrf.escolhida.irrf,
+          liquido: resultado.liquido,
+        },
+        informados,
+        tolerancia,
+        'Total bruto',
+      )
+    : []
+
+  const detalhe = resultado
+    ? `${formatarData(resultado.entrada.inicio)} a ${formatarData(resultado.entrada.fim)} · ${resultado.entrada.diasFerias} dias` +
+      (resultado.entrada.diasAbono ? ` + ${resultado.entrada.diasAbono} vendidos` : '')
+    : 'Férias'
+
+  return montarLinha(registro, dados, { ...form }, erros, itens, detalhe)
+}
+
+export function processarRegistros(registros: readonly RegistroPlanilha[], tolerancia: number, tabelas: Tabelas): LinhaLote[] {
+  return registros.map((registro) =>
+    registro.tipo === 'folha' ? processarFolha(registro, tolerancia, tabelas) : processarFerias(registro, tolerancia, tabelas),
+  )
+}
