@@ -22,6 +22,7 @@ export interface ColunaAulas {
 export interface LinhaColada {
   nome: string
   turma: string
+  matricula: string
   /** Quantidade por coluna de aulas (mesma ordem de `colunas`), em centesimos; null quando vazia. */
   valores: (number | null)[]
 }
@@ -92,6 +93,7 @@ function ehNumero(celula: string): boolean {
 
 const CABECALHO_NOME = /\b(nome|professor|professora|docente|colaborador)\b/
 const CABECALHO_TURMA = /\b(turma|disciplina|materia|cargo)\b/
+const CABECALHO_MATRICULA = /\b(matricula|registro|codigo)\b/
 
 export function lerTabelaColada(texto: string, tabela: TabelaHoraAula): TabelaColada {
   const avisos: string[] = []
@@ -144,10 +146,14 @@ export function lerTabelaColada(texto: string, tabela: TabelaHoraAula): TabelaCo
   const normalizados = cabecalhos.map(normalizar)
   const colunaNome = Math.max(normalizados.findIndex((cabecalho) => CABECALHO_NOME.test(cabecalho)), 0)
   const colunaTurma = normalizados.findIndex((cabecalho, indice) => indice !== colunaNome && CABECALHO_TURMA.test(cabecalho))
+  const colunaMatricula = normalizados.findIndex(
+    (cabecalho, indice) => indice !== colunaNome && indice !== colunaTurma && CABECALHO_MATRICULA.test(cabecalho),
+  )
 
   const colunas: ColunaAulas[] = cabecalhos
     .map((cabecalho, indice) => ({ indice, cabecalho, sugestao: sugerirDestino(cabecalho, tabela) }))
-    .filter((coluna) => coluna.cabecalho && coluna.indice !== colunaNome && coluna.indice !== colunaTurma)
+    // Colunas de total (ex.: "Total de aulas" do arquivo exportado) sao recalculadas: ficam de fora.
+    .filter((coluna) => coluna.cabecalho && ![colunaNome, colunaTurma, colunaMatricula].includes(coluna.indice) && !/^total\b/.test(normalizar(coluna.cabecalho)))
 
   let invalidas = 0
 
@@ -156,6 +162,7 @@ export function lerTabelaColada(texto: string, tabela: TabelaHoraAula): TabelaCo
     .map((linha) => ({
       nome: linha[colunaNome] ?? '',
       turma: colunaTurma >= 0 ? (linha[colunaTurma] ?? '') : '',
+      matricula: colunaMatricula >= 0 ? (linha[colunaMatricula] ?? '') : '',
       valores: colunas.map((coluna) => {
         const valor = paraCentavos(linha[coluna.indice] ?? '')
 
@@ -178,6 +185,7 @@ export function lerTabelaColada(texto: string, tabela: TabelaHoraAula): TabelaCo
 export interface ProfessorColado {
   nome: string
   turma: string
+  matricula: string
   /** Centesimos por id de tipo da tabela resultante. */
   aulas: Record<string, number>
 }
@@ -222,7 +230,7 @@ export function montarProfessores(
       if (destino && valor) aulas[destino] = (aulas[destino] ?? 0) + valor
     })
 
-    return { nome: linha.nome, turma: linha.turma, aulas }
+    return { nome: linha.nome, turma: linha.turma, matricula: linha.matricula, aulas }
   })
 
   return { professores, tabela: { ...tabela, tipos }, criadas }

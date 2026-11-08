@@ -23,6 +23,8 @@ const props = defineProps<{
   existentes: number
   /** Ha alteracoes nao salvas no editor (serao descartadas). */
   rascunhoAlterado: boolean
+  /** Conteudo ja carregado (ex.: arquivo importado que precisa de ligacao manual de colunas). */
+  textoInicial?: string
 }>()
 
 const emit = defineEmits<{
@@ -38,7 +40,7 @@ watch(
   () => props.aberto,
   (aberto) => {
     if (!aberto) return
-    texto.value = ''
+    texto.value = props.textoInicial ?? ''
     destinos.value = []
     modo.value = props.existentes ? 'mesclar' : 'substituir'
   },

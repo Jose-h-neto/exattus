@@ -16,7 +16,9 @@ import {
   type TabelaHoraAula,
 } from '@/domain/horaAula'
 import type { Empresa } from '@/domain/lote/tipos'
-import type { ProfessorColado } from '@/features/lote/colarProfessores'
+import { lerTabelaColada, montarProfessores, type ProfessorColado } from '@/features/lote/colarProfessores'
+import { completarTabela, exportarProfessores, lerArquivoProfessores } from '@/features/lote/professoresArquivo'
+import { baixarArquivo, nomeDeArquivo } from '@/lib/arquivos'
 import { useAvisos } from '@/stores/avisos'
 import { useCofre } from '@/stores/cofre'
 
@@ -178,7 +180,7 @@ function mesmoNome(a: string, b: string) {
 
 async function importar(dados: { professores: ProfessorColado[]; tabela: TabelaHoraAula; modo: 'substituir' | 'mesclar' }) {
   const atuais = props.empresa.professores ?? []
-  const novos = dados.professores.map((colado) => ({ id: novoId(), matricula: '', ...colado }))
+  const novos = dados.professores.map((colado) => ({ id: novoId(), ...colado }))
 
   const lista =
     dados.modo === 'substituir'
@@ -187,7 +189,9 @@ async function importar(dados: { professores: ProfessorColado[]; tabela: TabelaH
           ...atuais.map((atual) => {
             const colado = novos.find((novo) => mesmoNome(novo.nome, atual.nome))
 
-            return colado ? { ...atual, turma: colado.turma || atual.turma, aulas: colado.aulas } : atual
+            return colado
+              ? { ...atual, turma: colado.turma || atual.turma, matricula: colado.matricula || atual.matricula, aulas: colado.aulas }
+              : atual
           }),
           ...novos.filter((novo) => !atuais.some((atual) => mesmoNome(atual.nome, novo.nome))),
         ]
@@ -201,6 +205,54 @@ async function importar(dados: { professores: ProfessorColado[]; tabela: TabelaH
   } catch (causa) {
     avisar(causa instanceof Error ? causa.message : 'Não foi possível importar os professores.', 'erro')
   }
+}
+
+/* Arquivo de professores: exportar e importar direto (sem escolher colunas). */
+const entradaArquivo = ref<HTMLInputElement | null>(null)
+const textoParaLigar = ref<string | undefined>(undefined)
+const processandoArquivo = ref(false)
+
+async function exportar() {
+  try {
+    baixarArquivo(await exportarProfessores(props.empresa), `professores-${nomeDeArquivo(props.empresa.nome)}.xlsx`)
+  } catch {
+    avisar('Não foi possível exportar os professores.', 'erro')
+  }
+}
+
+async function importarArquivo(arquivo: File | undefined) {
+  if (!arquivo || !tabela.value) return
+
+  processandoArquivo.value = true
+
+  try {
+    const lido = await lerArquivoProfessores(arquivo)
+    const { tabela: completa } = completarTabela(tabela.value, lido.rubricas)
+    const colada = lerTabelaColada(lido.texto, completa)
+    const destinos = colada.colunas.map((coluna) => coluna.sugestao)
+
+    // Alguma coluna sem rubrica reconhecida: abre a ligacao manual com o conteudo do arquivo.
+    if (colada.avisos.length || !colada.linhas.length || destinos.some((destino) => !destino)) {
+      textoParaLigar.value = lido.texto
+      colando.value = true
+      avisar('Confira a ligação das colunas do arquivo com as rubricas.', 'info')
+      return
+    }
+
+    const resultado = montarProfessores(colada, destinos, completa)
+
+    await importar({ professores: resultado.professores, tabela: resultado.tabela, modo: props.empresa.professores?.length ? 'mesclar' : 'substituir' })
+  } catch (causa) {
+    avisar(causa instanceof Error ? causa.message : 'Não foi possível ler o arquivo.', 'erro')
+  } finally {
+    processandoArquivo.value = false
+    if (entradaArquivo.value) entradaArquivo.value.value = ''
+  }
+}
+
+function abrirColar() {
+  textoParaLigar.value = undefined
+  colando.value = true
 }
 </script>
 
@@ -220,8 +272,21 @@ async function importar(dados: { professores: ProfessorColado[]; tabela: TabelaH
         Aulas <span class="font-semibold">padrão do mês</span> de cada professor. Na Folha e no modelo do lote elas já vêm preenchidas; altere só o que mudou no mês.
       </p>
       <div class="flex shrink-0 flex-wrap items-center gap-2">
-        <UiButton icone="planilha" @click="colando = true">Colar do Excel</UiButton>
+        <UiButton variante="discreto" icone="baixar" :disabled="!empresa.professores?.length" @click="exportar">Exportar</UiButton>
+        <UiButton variante="discreto" icone="enviar" :disabled="processandoArquivo" @click="entradaArquivo?.click()">
+          {{ processandoArquivo ? 'Importando…' : 'Importar arquivo' }}
+        </UiButton>
+        <UiButton icone="planilha" @click="abrirColar">Colar do Excel</UiButton>
         <UiButton icone="adicionar" @click="adicionar">Adicionar professor</UiButton>
+        <input
+          ref="entradaArquivo"
+          type="file"
+          accept=".xlsx,.tsv,.txt,.csv"
+          class="sr-only"
+          tabindex="-1"
+          aria-label="Arquivo de professores"
+          @change="importarArquivo(($event.target as HTMLInputElement).files?.[0])"
+        />
       </div>
     </div>
 
@@ -229,10 +294,11 @@ async function importar(dados: { professores: ProfessorColado[]; tabela: TabelaH
       v-if="!rascunho.length"
       icone="colaboradores"
       titulo="Nenhum professor cadastrado"
-      descricao="Copie a tabela de aulas da instituição no Excel (nome, turma e colunas de aulas) e cole aqui, ou adicione um a um."
+      descricao="Importe o arquivo de professores exportado pelo Exattus, cole a tabela de aulas do Excel ou adicione um a um."
     >
       <div class="flex flex-wrap justify-center gap-2">
-        <UiButton variante="primario" icone="planilha" @click="colando = true">Colar do Excel</UiButton>
+        <UiButton variante="primario" icone="enviar" @click="entradaArquivo?.click()">Importar arquivo</UiButton>
+        <UiButton icone="planilha" @click="abrirColar">Colar do Excel</UiButton>
         <UiButton icone="adicionar" @click="adicionar">Adicionar professor</UiButton>
       </div>
     </UiEmptyState>
@@ -345,6 +411,7 @@ async function importar(dados: { professores: ProfessorColado[]; tabela: TabelaH
       :tabela="tabela"
       :existentes="empresa.professores?.length ?? 0"
       :rascunho-alterado="alterado"
+      :texto-inicial="textoParaLigar"
       @fechar="colando = false"
       @importar="importar"
     />

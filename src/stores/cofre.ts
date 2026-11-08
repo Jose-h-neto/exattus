@@ -91,7 +91,7 @@ async function aplicarDadosLocais(lista: Empresa[]): Promise<Empresa[]> {
     const empresa: Empresa = {
       ...(atual ?? { id: novoId(), nome, cnpj: '', criadaEm: new Date().toISOString() }),
       horaAula: tabela,
-      professores: professores.map((professor) => ({ id: novoId(), matricula: '', ...professor })),
+      professores: professores.map((professor) => ({ id: novoId(), ...professor })),
     }
 
     await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
