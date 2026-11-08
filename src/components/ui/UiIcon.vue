@@ -37,6 +37,7 @@ const MAPA = {
   sol: 'sun',
   lua: 'moon',
   empresa: 'empresa',
+  colaboradores: 'colaboradores',
   pasta: 'pasta',
   enviar: 'upload',
   planilha: 'planilha',

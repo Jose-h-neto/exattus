@@ -15,6 +15,8 @@ import {
   colunasHoraAula,
   COLUNAS_FERIAS,
   COLUNAS_FOLHA,
+  normalizarCabecalho,
+  PREFIXO_AULA,
   type ColunaLote,
   type GrupoColuna,
   type TipoColuna,
@@ -118,7 +120,8 @@ function alinhamentoHorizontal(coluna: ColunaLote): 'left' | 'center' | 'right' 
   return 'center'
 }
 
-function abaDados(aba: Worksheet, titulo: string, colunas: ColunaLote[]) {
+/** linhasIniciais: valores ja preenchidos por campo (ex.: professores e aulas padrao). */
+function abaDados(aba: Worksheet, titulo: string, colunas: ColunaLote[], linhasIniciais: Record<string, string | number>[] = []) {
   const total = colunas.length
 
   faixaTitulo(
@@ -184,9 +187,12 @@ function abaDados(aba: Worksheet, titulo: string, colunas: ColunaLote[]) {
   // Area de dados: zebrado, bordas, formatos e validacao.
   const validacoes = colunas.map(validacao)
 
-  for (let numero = LINHA_CABECALHO + 1; numero <= LINHA_CABECALHO + LINHAS_MODELO; numero++) {
+  const totalLinhas = Math.max(LINHAS_MODELO, linhasIniciais.length + 50)
+
+  for (let numero = LINHA_CABECALHO + 1; numero <= LINHA_CABECALHO + totalLinhas; numero++) {
     const zebra = (numero - LINHA_CABECALHO) % 2 === 0
     const linha = aba.getRow(numero)
+    const inicial = linhasIniciais[numero - LINHA_CABECALHO - 1]
 
     linha.height = 18
 
@@ -195,6 +201,9 @@ function abaDados(aba: Worksheet, titulo: string, colunas: ColunaLote[]) {
       const grupo = GRUPOS[coluna.grupo]
       const formato = formatoNumerico(coluna)
       const regra = validacoes[indice]
+      const valor = inicial?.[coluna.campo]
+
+      if (valor !== undefined && valor !== '') celula.value = valor
 
       celula.fill = preenchimento(zebra ? grupo.zebra : grupo.dado)
       celula.border = BORDA_CELULA
@@ -370,7 +379,7 @@ function abaInstrucoes(aba: Worksheet, contexto: ContextoModelo) {
 
   const dicas = [
     tabelaHoraAula
-      ? 'Os tipos de aula da aba Hora-aula vêm da tabela da instituição. Para mudar valores ou incluir tipos, edite a tabela no Exattus e baixe o modelo de novo.'
+      ? 'A aba Hora-aula já vem com os professores cadastrados e as aulas padrão do mês: altere só o que mudou, inclua quem faltar e preencha as colunas rosa. Para mudar valores ou tipos de aula, edite a tabela no Exattus e baixe o modelo de novo.'
       : 'Para professores por hora-aula, baixe o modelo de dentro da pasta da instituição (Cofre de lotes): ele traz a aba Hora-aula com os tipos de aula.',
     'Valores em reais podem ser digitados como 5500 ou 5500,00. Datas como 06/07/2026. Horas como 10:30.',
     'Não mude o nome dos cabeçalhos: o Exattus encontra as colunas pelo nome. A ordem e colunas extras não atrapalham.',
@@ -477,7 +486,21 @@ export async function gerarModelo(empresa?: Empresa): Promise<Blob> {
   if (colunasAula && empresa?.horaAula) {
     const regra = `hora-atividade ${formatarPercentual(empresa.horaAula.horaAtividade)} · DSR (aulas + hora-atividade) ÷ ${empresa.horaAula.divisorDsr}`
 
-    abaDados(pasta.addWorksheet('Hora-aula', opcoesDados(COR.info)), `Hora-aula  ·  ${empresa.nome}  ·  ${regra}`, colunasAula)
+    // Professores cadastrados entram ja preenchidos com as aulas padrao do mes.
+    const tipos = empresa.horaAula.tipos
+    const professores = [...(empresa.professores ?? [])]
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
+      .map((professor) => ({
+        matricula: professor.matricula,
+        nome: professor.nome,
+        ...Object.fromEntries(
+          tipos
+            .filter((tipo) => professor.aulas[tipo.id])
+            .map((tipo) => [`${PREFIXO_AULA}${normalizarCabecalho(tipo.descricao)}`, (professor.aulas[tipo.id] ?? 0) / 100]),
+        ),
+      }))
+
+    abaDados(pasta.addWorksheet('Hora-aula', opcoesDados(COR.info)), `Hora-aula  ·  ${empresa.nome}  ·  ${regra}`, colunasAula, professores)
   }
 
   abaDados(pasta.addWorksheet('Férias', opcoesDados(COR.accent)), 'Conferência em lote  ·  Férias', COLUNAS_FERIAS)

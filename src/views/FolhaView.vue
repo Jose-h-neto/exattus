@@ -313,7 +313,9 @@ watch(
         <HoraAulaLancamento
           v-if="porHoraAula"
           v-model:instituicao="form.instituicaoId"
+          v-model:professor="form.professorId"
           v-model:aulas="form.aulas"
+          v-model:referencia="form.referencia"
           :instituicoes="cofre.instituicoes.value"
           :leitura="leitura.horaAula"
           :erro="erros.instituicaoId"

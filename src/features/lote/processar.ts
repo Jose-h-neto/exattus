@@ -8,7 +8,7 @@ import { formatarData } from '@/domain/datas'
 import { paraCentavos } from '@/domain/dinheiro'
 import { calcularFerias } from '@/domain/ferias'
 import { calcularFolha } from '@/domain/folha'
-import { formatarAulas, type TabelaHoraAula } from '@/domain/horaAula'
+import { formatarAulas, type ProfessorHoraAula, type TabelaHoraAula } from '@/domain/horaAula'
 import {
   conferirValor,
   situacaoDosItens,
@@ -32,6 +32,12 @@ export interface Tabelas {
 export interface InstituicaoLote {
   empresaId: string
   tabela: TabelaHoraAula | null
+  /** Professores cadastrados: ligam a linha ao professor (para comparar com as aulas padrao). */
+  professores?: ProfessorHoraAula[]
+}
+
+function mesmoNome(a: string, b: string): boolean {
+  return a.trim().localeCompare(b.trim(), 'pt-BR', { sensitivity: 'base' }) === 0
 }
 
 type Informados = Record<ChaveItemLote, number | null>
@@ -275,6 +281,7 @@ function processarHoraAula(registro: RegistroPlanilha, tolerancia: number, tabel
   form.referencia = dados.nome
   form.remuneracao = 'hora_aula'
   form.instituicaoId = instituicao?.empresaId ?? ''
+  form.professorId = instituicao?.professores?.find((professor) => mesmoNome(professor.nome, dados.nome))?.id ?? ''
   form.dependentes = v.dependentes || '0'
   form.horasExtras = v.horasExtras ?? ''
   form.adiantamentoSalarial = v.adiantamentoSalarial ?? ''

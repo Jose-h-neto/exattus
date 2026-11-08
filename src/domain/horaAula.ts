@@ -63,7 +63,32 @@ export const RUBRICAS_HORA_AULA_PADRAO: readonly TipoAula[] = [
   { id: 'reforco-plantao', descricao: 'Hora Aula Reforço/Plantão', valor: 6425 },
   { id: 'vestibulinho', descricao: 'Hora Aula Vestibulinho', valor: 6425 },
   { id: 'aula-subs-fundamental', descricao: 'Hora Aula Subs Fundamental', valor: 5257 },
+  { id: 'contraturno', descricao: 'Hora Aula Contraturno', valor: 5257 },
+  { id: 'olimpiada', descricao: 'Hora Aula Olimpíada', valor: 6425 },
 ]
+
+/** Professor da instituicao com as aulas padrao do mes (base para a conferencia). */
+export interface ProfessorHoraAula {
+  id: string
+  nome: string
+  /** Turma ou disciplina, so para identificacao. */
+  turma: string
+  matricula: string
+  /** Aulas padrao do mes por tipo de aula (id do tipo -> centesimos; 36 aulas = 3600). */
+  aulas: Record<string, number>
+}
+
+/** Soma das aulas padrao do professor, em centesimos (so tipos que ainda existem na tabela). */
+export function totalAulasProfessor(professor: ProfessorHoraAula, tabela?: TabelaHoraAula): number {
+  return Object.entries(professor.aulas)
+    .filter(([tipoId]) => !tabela || tabela.tipos.some((tipo) => tipo.id === tipoId))
+    .reduce((soma, [, quantidade]) => soma + quantidade, 0)
+}
+
+/** Centesimos para o texto dos campos: 3600 -> "36"; 3150 -> "31,5"; 0 -> "". */
+export function aulasParaTexto(centesimos: number | undefined): string {
+  return centesimos ? formatarAulas(centesimos) : ''
+}
 
 /** Tabela pre-cadastrada da instituicao Alvorada-Bianchi. */
 export function tabelaHoraAulaPadrao(): TabelaHoraAula {

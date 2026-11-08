@@ -4,8 +4,8 @@ import { computed, watch } from 'vue'
 import UiIcon from '@/components/ui/UiIcon.vue'
 import UiInfo from '@/components/ui/UiInfo.vue'
 
-import { formatarMoeda, formatarPercentual } from '@/domain/dinheiro'
-import { formatarAulas } from '@/domain/horaAula'
+import { formatarMoeda, formatarPercentual, paraCentavos } from '@/domain/dinheiro'
+import { aulasParaTexto, formatarAulas } from '@/domain/horaAula'
 import type { Empresa } from '@/domain/lote/tipos'
 import type { LeituraHoraAula } from '@/features/folha'
 
@@ -14,7 +14,10 @@ import type { LeituraHoraAula } from '@/features/folha'
  * hora-aula) e informa a quantidade de aulas do mes de cada tipo.
  */
 const instituicaoId = defineModel<string>('instituicao', { required: true })
+const professorId = defineModel<string>('professor', { required: true })
 const aulas = defineModel<Record<string, string>>('aulas', { required: true })
+/** Funcionario ou referencia da folha: recebe o nome do professor escolhido. */
+const referencia = defineModel<string>('referencia', { required: true })
 
 const props = defineProps<{
   instituicoes: Empresa[]
@@ -36,6 +39,48 @@ watch(
 )
 
 const resultado = computed(() => props.leitura?.resultado ?? null)
+
+const professores = computed(() =>
+  [...(instituicao.value?.professores ?? [])].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')),
+)
+const professor = computed(() => professores.value.find((item) => item.id === professorId.value))
+
+/** Aulas padrao do professor, no formato dos campos. */
+function aulasPadrao(id: string): Record<string, string> {
+  const escolhido = professores.value.find((item) => item.id === id)
+
+  return Object.fromEntries((tabela.value?.tipos ?? []).map((tipo) => [tipo.id, aulasParaTexto(escolhido?.aulas[tipo.id])]))
+}
+
+/** Normaliza para comparar: "36,0", "36" e "" vs. ausente. */
+function mesmasAulas(a: Record<string, string>, b: Record<string, string>): boolean {
+  return (tabela.value?.tipos ?? []).every((tipo) => (paraCentavos(a[tipo.id] ?? '') ?? 0) === (paraCentavos(b[tipo.id] ?? '') ?? 0))
+}
+
+const alteradoDoPadrao = computed(() => Boolean(professor.value) && !mesmasAulas(aulas.value, aulasPadrao(professorId.value)))
+
+function escolherProfessor(id: string) {
+  const anterior = professor.value
+  const novo = professores.value.find((item) => item.id === id)
+
+  professorId.value = id
+
+  if (!novo) return
+
+  aulas.value = aulasPadrao(id)
+
+  // So troca a referencia se estava vazia ou era o professor anterior.
+  if (!referencia.value.trim() || referencia.value === anterior?.nome) referencia.value = novo.nome
+}
+
+function restaurarPadrao() {
+  aulas.value = aulasPadrao(professorId.value)
+}
+
+// Trocou de instituicao: o professor escolhido nao vale mais.
+watch(instituicaoId, () => {
+  if (professorId.value && !professor.value) professorId.value = ''
+})
 
 function totalDoTipo(tipoId: string): number | null {
   return resultado.value?.linhas.find((linha) => linha.tipoId === tipoId)?.total ?? null
@@ -73,6 +118,38 @@ function atualizar(tipoId: string, valor: string) {
           </select>
         </div>
         <p v-if="erro" class="ex-error campo-mensagem"><UiIcon nome="alerta" :tamanho="14" />{{ erro }}</p>
+        <span v-else class="campo-mensagem" aria-hidden="true" />
+      </div>
+
+      <div class="ex-field campo-alinhado">
+        <div class="flex min-w-0 flex-1 items-end gap-1.5">
+          <label for="folha-professor" class="ex-label">Professor <span class="ex-label__opt">(aulas padrão)</span></label>
+          <RouterLink
+            v-if="instituicao"
+            :to="{ name: 'cofre-empresa', params: { empresaId: instituicao.id }, query: { aba: 'professores' } }"
+            class="ml-auto shrink-0 text-xs font-medium text-primary hover:underline focus-visible:outline-2 focus-visible:outline-primary"
+          >
+            {{ professores.length ? 'Editar professores' : 'Cadastrar professores' }}
+          </RouterLink>
+        </div>
+        <div class="ex-control">
+          <UiIcon nome="colaboradores" :tamanho="16" class="ml-3 shrink-0 text-muted" />
+          <select
+            id="folha-professor"
+            :value="professorId"
+            class="ex-input cursor-pointer bg-transparent"
+            :disabled="!professores.length"
+            @change="escolherProfessor(($event.target as HTMLSelectElement).value)"
+          >
+            <option value="">{{ professores.length ? 'Lançar as aulas manualmente' : 'Nenhum professor cadastrado' }}</option>
+            <option v-for="item in professores" :key="item.id" :value="item.id">{{ item.nome }}{{ item.turma ? ` · ${item.turma}` : '' }}</option>
+          </select>
+        </div>
+        <p v-if="alteradoDoPadrao" class="campo-mensagem flex items-center gap-2 text-xs text-warning">
+          Aulas alteradas em relação ao padrão.
+          <button type="button" class="font-medium text-primary hover:underline" @click="restaurarPadrao">Restaurar padrão</button>
+        </p>
+        <p v-else-if="professor" class="campo-mensagem text-xs text-muted">Aulas padrão de {{ professor.nome }}. Altere só o que mudou no mês.</p>
         <span v-else class="campo-mensagem" aria-hidden="true" />
       </div>
 

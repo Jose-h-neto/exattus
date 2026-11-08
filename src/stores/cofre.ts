@@ -1,6 +1,6 @@
 import { computed, ref } from 'vue'
 
-import { tabelaHoraAulaPadrao, type TabelaHoraAula } from '@/domain/horaAula'
+import { tabelaHoraAulaPadrao, type ProfessorHoraAula, type TabelaHoraAula } from '@/domain/horaAula'
 import type { CabecalhoLote, Empresa, LinhaLote, Lote } from '@/domain/lote/tipos'
 import { normalizarCnpj, resumirLinhas } from '@/domain/lote/tipos'
 import { gravarJson, lerJson } from '@/lib/armazenamento'
@@ -147,6 +147,21 @@ export function useCofre() {
 
       const { horaAula: _anterior, ...resto } = atual
       const empresa: Empresa = tabela ? { ...resto, horaAula: tabela } : resto
+
+      await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
+      empresas.value = empresas.value.map((item) => (item.id === id ? empresa : item))
+    },
+
+    /**
+     * Grava os professores (aulas padrao) da instituicao. Com `tabela`, grava
+     * tambem a tabela de hora-aula na mesma transacao (ex.: rubricas criadas ao colar).
+     */
+    async salvarProfessores(id: string, professores: ProfessorHoraAula[], tabela?: TabelaHoraAula) {
+      const atual = empresas.value.find((empresa) => empresa.id === id)
+
+      if (!atual) return
+
+      const empresa: Empresa = { ...atual, professores, ...(tabela ? { horaAula: tabela } : {}) }
 
       await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
       empresas.value = empresas.value.map((item) => (item.id === id ? empresa : item))

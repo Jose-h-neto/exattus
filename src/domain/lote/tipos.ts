@@ -1,4 +1,4 @@
-import type { TabelaHoraAula } from '../horaAula'
+import type { ProfessorHoraAula, TabelaHoraAula } from '../horaAula'
 import type { ItemConferenciaLote } from './conferencia'
 
 export type TipoLinhaLote = 'folha' | 'ferias'
@@ -44,6 +44,8 @@ export interface Empresa {
   criadaEm: string
   /** Instituicao de ensino: valores da hora-aula, hora-atividade e DSR. */
   horaAula?: TabelaHoraAula
+  /** Professores com as aulas padrao do mes (base da conferencia de hora-aula). */
+  professores?: ProfessorHoraAula[]
 }
 
 export interface Lote {

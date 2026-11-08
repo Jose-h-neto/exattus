@@ -46,6 +46,8 @@ export interface FormularioFolha {
   remuneracao: Remuneracao
   /** Empresa do cofre cuja tabela de hora-aula e usada. */
   instituicaoId: string
+  /** Professor cadastrado na instituicao cujas aulas padrao preencheram o formulario ('' = manual). */
+  professorId: string
   /** Quantidade de aulas no mes por tipo de aula (id do tipo -> "80"). */
   aulas: Record<string, string>
   salario: string
@@ -98,6 +100,7 @@ export function formularioFolhaPadrao(): FormularioFolha {
     modalidade: 'empregado',
     remuneracao: 'mensal',
     instituicaoId: '',
+    professorId: '',
     aulas: {},
     salario: '',
     dias: '30',

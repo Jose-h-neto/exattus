@@ -124,7 +124,13 @@ const tolerancia = computed(() => paraCentavos(form.tolerancia))
 
 /** Tabela de hora-aula da pasta de destino (calcula a aba Hora-aula). */
 const instituicao = computed(() =>
-  form.destino === NOVA ? { empresaId: '', tabela: null } : { empresaId: form.destino, tabela: obterEmpresa(form.destino)?.horaAula ?? null },
+  form.destino === NOVA
+    ? { empresaId: '', tabela: null }
+    : {
+        empresaId: form.destino,
+        tabela: obterEmpresa(form.destino)?.horaAula ?? null,
+        professores: obterEmpresa(form.destino)?.professores,
+      },
 )
 
 const linhas = computed(() =>

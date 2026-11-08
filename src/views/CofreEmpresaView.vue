@@ -5,6 +5,7 @@ import { useRoute, useRouter } from 'vue-router'
 import PageHeader from '@/components/layout/PageHeader.vue'
 import EmpresaModal from '@/components/lote/EmpresaModal.vue'
 import ImportarLote from '@/components/lote/ImportarLote.vue'
+import ProfessoresHoraAulaEditor from '@/components/lote/ProfessoresHoraAulaEditor.vue'
 import TabelaHoraAulaEditor from '@/components/lote/TabelaHoraAulaEditor.vue'
 import UiTabs from '@/components/ui/UiTabs.vue'
 import UiBadge from '@/components/ui/UiBadge.vue'
@@ -28,12 +29,13 @@ const empresaId = computed(() => String(route.params.empresaId ?? ''))
 const empresa = computed(() => obterEmpresa(empresaId.value))
 const lotes = computed(() => lotesDa(empresaId.value))
 
-/** Aba aberta: lotes ou tabela de hora-aula (/cofre/:id?aba=hora-aula, vindo da Folha). */
-const aba = ref(route.query.aba === 'hora-aula' ? 'hora-aula' : 'lotes')
+/** Aba aberta: lotes, tabela de hora-aula ou professores (/cofre/:id?aba=hora-aula, vindo da Folha). */
+const aba = ref(['hora-aula', 'professores'].includes(String(route.query.aba)) ? String(route.query.aba) : 'lotes')
 
 const abas = computed(() => [
   { id: 'lotes', rotulo: 'Lotes', contador: lotes.value.length },
   { id: 'hora-aula', rotulo: 'Hora-aula', contador: empresa.value?.horaAula?.tipos.length || undefined },
+  { id: 'professores', rotulo: 'Professores', contador: empresa.value?.professores?.length || undefined },
 ])
 
 const importando = ref(false)
@@ -100,6 +102,7 @@ async function confirmarExclusaoPasta() {
       <UiTabs v-model="aba" :abas="abas" rotulo="Conteúdo da pasta">
         <template #default="{ ativa }">
           <TabelaHoraAulaEditor v-if="ativa === 'hora-aula'" :empresa="empresa" />
+          <ProfessoresHoraAulaEditor v-else-if="ativa === 'professores'" :empresa="empresa" @ir-para-tabela="aba = 'hora-aula'" />
           <template v-else>
       <UiEmptyState
         v-if="!lotes.length"
