@@ -37,3 +37,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+
+# Dados locais (professores etc.): ficam so nesta maquina, nunca vao para o GitHub
+src/dados-locais/

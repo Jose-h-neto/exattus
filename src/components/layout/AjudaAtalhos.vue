@@ -10,6 +10,7 @@ export function abrirAjudaAtalhos() {
 </script>
 
 <script setup lang="ts">
+import { ITENS_COM_ATALHO } from '@/app/navegacao'
 import UiButton from '@/components/ui/UiButton.vue'
 import UiModal from '@/components/ui/UiModal.vue'
 import { useAtalhos } from '@/lib/teclado'
@@ -17,6 +18,10 @@ import { useAtalhos } from '@/lib/teclado'
 useAtalhos([{ tecla: '?', acao: () => (aberta.value = true) }])
 
 const GRUPOS = [
+  {
+    titulo: 'Navegação',
+    itens: ITENS_COM_ATALHO.map((item) => ({ teclas: ['Alt', item.tecla], acao: item.rotulo })),
+  },
   {
     titulo: 'Preenchimento',
     itens: [

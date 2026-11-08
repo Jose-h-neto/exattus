@@ -72,6 +72,9 @@ export function rotaDoMenu(destino: { name?: unknown; meta: { navegacao?: string
   return destino.meta.navegacao ?? String(destino.name ?? '')
 }
 
+/** Itens do menu na ordem da barra lateral: Alt+1 abre o primeiro, Alt+2 o segundo... */
+export const ITENS_COM_ATALHO = NAVEGACAO.flatMap((grupo) => grupo.itens).map((item, indice) => ({ ...item, tecla: String(indice + 1) }))
+
 export function localizarItem(rota: string) {
   for (const grupo of NAVEGACAO) {
     const item = grupo.itens.find((candidato) => candidato.rota === rota)

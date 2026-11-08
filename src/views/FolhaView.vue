@@ -238,6 +238,19 @@ function salvar() {
   avisar('Conferência salva em Registros.')
 }
 
+/** Ação rápida "Folha por hora-aula" da barra lateral: /folha?remuneracao=hora_aula */
+watch(
+  () => route.query.remuneracao,
+  (remuneracao) => {
+    if (remuneracao !== 'hora_aula') return
+
+    form.modalidade = 'empregado'
+    form.remuneracao = 'hora_aula'
+    router.replace({ name: 'folha' })
+  },
+  { immediate: true },
+)
+
 /** Reabre uma conferencia salva: /folha?conferencia=<id> */
 watch(
   () => route.query.conferencia,

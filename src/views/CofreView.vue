@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 import PageHeader from '@/components/layout/PageHeader.vue'
 import EmpresaModal from '@/components/lote/EmpresaModal.vue'
@@ -16,8 +17,22 @@ import { useCofre } from '@/stores/cofre'
 
 const { empresas, carregado, erro, lotesDa } = useCofre()
 const { gerandoModelo, baixarModelo } = useBaixarModelo()
+const route = useRoute()
+const router = useRouter()
 
 const importando = ref(false)
+
+/** Ação rápida "Importar planilha" da barra lateral: /cofre?importar=1 */
+watch(
+  () => route.query.importar,
+  (importar) => {
+    if (!importar) return
+
+    importando.value = true
+    void router.replace({ query: {} })
+  },
+  { immediate: true },
+)
 const criando = ref(false)
 const busca = ref('')
 

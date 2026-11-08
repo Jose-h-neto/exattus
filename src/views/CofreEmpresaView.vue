@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import PageHeader from '@/components/layout/PageHeader.vue'
@@ -29,8 +29,13 @@ const empresaId = computed(() => String(route.params.empresaId ?? ''))
 const empresa = computed(() => obterEmpresa(empresaId.value))
 const lotes = computed(() => lotesDa(empresaId.value))
 
-/** Aba aberta: lotes, tabela de hora-aula ou professores (/cofre/:id?aba=hora-aula, vindo da Folha). */
-const aba = ref(['hora-aula', 'professores'].includes(String(route.query.aba)) ? String(route.query.aba) : 'lotes')
+/** Aba aberta, guardada no endereço (/cofre/:id?aba=professores): os atalhos da barra lateral abrem a aba certa. */
+const aba = computed({
+  get: () => (['hora-aula', 'professores'].includes(String(route.query.aba)) ? String(route.query.aba) : 'lotes'),
+  set: (nova: string) => {
+    void router.replace({ query: { ...route.query, aba: nova === 'lotes' ? undefined : nova } })
+  },
+})
 
 const abas = computed(() => [
   { id: 'lotes', rotulo: 'Lotes', contador: lotes.value.length },
@@ -39,6 +44,18 @@ const abas = computed(() => [
 ])
 
 const importando = ref(false)
+
+/** Ação rápida "Importar planilha" da barra lateral: /cofre/:id?importar=1 */
+watch(
+  () => route.query.importar,
+  (importar) => {
+    if (!importar) return
+
+    importando.value = true
+    void router.replace({ query: { ...route.query, importar: undefined } })
+  },
+  { immediate: true },
+)
 const editando = ref(false)
 const excluindoPasta = ref(false)
 const loteParaExcluir = ref<CabecalhoLote | null>(null)

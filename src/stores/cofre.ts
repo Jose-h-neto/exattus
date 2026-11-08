@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { tabelaHoraAulaPadrao, type ProfessorHoraAula, type TabelaHoraAula } from '@/domain/horaAula'
 import type { CabecalhoLote, Empresa, LinhaLote, Lote } from '@/domain/lote/tipos'
 import { normalizarCnpj, resumirLinhas } from '@/domain/lote/tipos'
+import { lerTabelaColada, montarProfessores } from '@/features/lote/colarProfessores'
 import { gravarJson, lerJson } from '@/lib/armazenamento'
 import { aplicar, listar, LOJAS, obter } from '@/lib/banco'
 
@@ -42,6 +43,80 @@ function ordenarEmpresas(lista: Empresa[]): Empresa[] {
   return [...lista].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'))
 }
 
+/*
+ * Dados locais: src/dados-locais/<Instituicao>.tsv (ignorado pelo git, nunca
+ * publicado). Cada arquivo e uma tabela de professores no formato do "Colar do
+ * Excel" e e carregado uma vez na instituicao de mesmo nome.
+ */
+const DADOS_LOCAIS = import.meta.glob('/src/dados-locais/*.tsv', { eager: true, query: '?raw', import: 'default' }) as Record<string, string>
+const CHAVE_DADOS_LOCAIS = 'exattus:dados-locais-aplicados'
+
+/** Tabela criada pela primeira versao da hora-aula (5 tipos com nomes antigos): troca pela atual. */
+const IDS_TABELA_ANTIGA = ['ensino-medio', 'fundamental', 'infantil', 'subs-medio', 'subs-fundamental']
+
+function ehTabelaAntiga(tabela: TabelaHoraAula | undefined): boolean {
+  return Boolean(
+    tabela &&
+      tabela.tipos.length === IDS_TABELA_ANTIGA.length &&
+      tabela.tipos.every((tipo, indice) => tipo.id === IDS_TABELA_ANTIGA[indice]) &&
+      tabela.tipos.some((tipo) => tipo.descricao === 'Substituição Ensino Médio'),
+  )
+}
+
+function mesmoNome(a: string, b: string): boolean {
+  return a.trim().localeCompare(b.trim(), 'pt-BR', { sensitivity: 'base' }) === 0
+}
+
+async function aplicarDadosLocais(lista: Empresa[]): Promise<Empresa[]> {
+  const aplicados = lerJson(CHAVE_DADOS_LOCAIS, (valor): valor is string[] => Array.isArray(valor)) ?? []
+  let resultado = lista
+
+  for (const [caminho, texto] of Object.entries(DADOS_LOCAIS)) {
+    const nome = caminho.split('/').pop()?.replace(/\.tsv$/i, '') ?? ''
+
+    if (!nome || aplicados.includes(nome)) continue
+
+    const atual = resultado.find((empresa) => mesmoNome(empresa.nome, nome))
+
+    // Lista ja cadastrada pelo usuario: nao sobrescreve.
+    if (atual?.professores?.length) {
+      aplicados.push(nome)
+      continue
+    }
+
+    const base = atual?.horaAula && !ehTabelaAntiga(atual.horaAula) ? atual.horaAula : tabelaHoraAulaPadrao()
+    const colada = lerTabelaColada(texto, base)
+    const { professores, tabela } = montarProfessores(colada, colada.colunas.map((coluna) => coluna.sugestao), base)
+
+    const empresa: Empresa = {
+      ...(atual ?? { id: novoId(), nome, cnpj: '', criadaEm: new Date().toISOString() }),
+      horaAula: tabela,
+      professores: professores.map((professor) => ({ id: novoId(), matricula: '', ...professor })),
+    }
+
+    await aplicar([{ loja: LOJAS.empresas, gravar: empresa }])
+    resultado = atual ? resultado.map((item) => (item.id === empresa.id ? empresa : item)) : [...resultado, empresa]
+    aplicados.push(nome)
+  }
+
+  gravarJson(CHAVE_DADOS_LOCAIS, aplicados)
+
+  return resultado
+}
+
+/** Atualiza a tabela antiga de 5 tipos (sem professores) para as rubricas atuais. */
+async function migrarTabelasAntigas(lista: Empresa[]): Promise<Empresa[]> {
+  const antigas = lista.filter((empresa) => ehTabelaAntiga(empresa.horaAula) && !empresa.professores?.length)
+
+  if (!antigas.length) return lista
+
+  const atualizadas = antigas.map((empresa) => ({ ...empresa, horaAula: tabelaHoraAulaPadrao() }))
+
+  await aplicar(atualizadas.map((empresa) => ({ loja: LOJAS.empresas, gravar: empresa })))
+
+  return lista.map((empresa) => atualizadas.find((item) => item.id === empresa.id) ?? empresa)
+}
+
 /** Pre-cadastra a instituicao com a tabela de hora-aula informada pelo usuario, uma unica vez. */
 async function semearInstituicao(lista: Empresa[]): Promise<Empresa[]> {
   if (lerJson(CHAVE_SEMENTE, (valor): valor is true => valor === true)) return lista
@@ -70,7 +145,9 @@ async function semearInstituicao(lista: Empresa[]): Promise<Empresa[]> {
 function carregar(): Promise<void> {
   carregando ??= Promise.all([listar<Empresa>(LOJAS.empresas), listar<CabecalhoLote>(LOJAS.lotes)])
     .then(async ([listaEmpresas, listaLotes]) => {
-      empresas.value = ordenarEmpresas(await semearInstituicao(listaEmpresas))
+      const semeadas = await migrarTabelasAntigas(await semearInstituicao(listaEmpresas))
+
+      empresas.value = ordenarEmpresas(await aplicarDadosLocais(semeadas))
       lotes.value = listaLotes
       erro.value = null
     })

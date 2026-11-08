@@ -94,6 +94,10 @@ export interface Atalho {
   tecla: string
   ctrl?: boolean
   shift?: boolean
+  /** Exige Alt (sem Ctrl: AltGr nao dispara). Funciona tambem com o foco num campo. */
+  alt?: boolean
+  /** KeyboardEvent.code alternativo (ex.: "Digit1"), para teclados em que Alt muda o caractere. */
+  codigo?: string
   /** Permite disparar com o foco num campo de texto. */
   emCampos?: boolean
   acao: (evento: KeyboardEvent) => void
@@ -116,11 +120,14 @@ export function useAtalhos(atalhos: Atalho[]) {
     for (const atalho of atalhos) {
       const ctrl = evento.ctrlKey || evento.metaKey
 
+      const tecla = evento.key.toLowerCase() === atalho.tecla.toLowerCase() || (atalho.codigo !== undefined && evento.code === atalho.codigo)
+
       if (
-        evento.key.toLowerCase() === atalho.tecla.toLowerCase() &&
+        tecla &&
         ctrl === Boolean(atalho.ctrl) &&
+        (!atalho.alt || evento.altKey) &&
         (atalho.shift === undefined || evento.shiftKey === atalho.shift) &&
-        (atalho.emCampos || ctrl || !emCampoDeTexto(evento.target))
+        (atalho.emCampos || ctrl || atalho.alt || !emCampoDeTexto(evento.target))
       ) {
         evento.preventDefault()
         atalho.acao(evento)
