@@ -55,6 +55,17 @@ export const NAVEGACAO: GrupoNavegacao[] = [
     ],
   },
   {
+    titulo: 'Clientes',
+    itens: [
+      {
+        rota: 'instituto-terra',
+        rotulo: 'Instituto Terra',
+        descricao: 'Lê o resumo de eventos do mês (uma aba por centro de custo) e gera a planilha de lançamentos FOPAG no layout de upload do sistema da folha.',
+        icone: 'empresa',
+      },
+    ],
+  },
+  {
     titulo: 'Configuração',
     itens: [
       {

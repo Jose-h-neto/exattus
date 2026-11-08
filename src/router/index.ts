@@ -30,6 +30,7 @@ const router = createRouter({
       component: () => import('@/views/LoteView.vue'),
       meta: { navegacao: 'cofre' },
     },
+    { path: '/instituto-terra', name: 'instituto-terra', component: () => import('@/views/InstitutoTerraView.vue') },
     { path: '/parametros', name: 'parametros', component: () => import('@/views/ParametrosView.vue') },
     { path: '/:caminho(.*)*', redirect: { name: 'folha' } },
   ],
