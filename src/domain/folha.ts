@@ -1,4 +1,5 @@
 import { dividirArredondando } from './dinheiro'
+import { calcularFgts, type ResultadoFgts } from './fgts'
 import type { ResultadoHoraAula } from './horaAula'
 import { calcularInss, type Modalidade, type ResultadoInss } from './inss'
 import { calcularIrrf, type ResultadoIrrf } from './irrf'
@@ -52,6 +53,8 @@ export interface ResultadoFolha {
   liquido: number
   conferenciaInss: Conferencia | null
   conferenciaIrrf: Conferencia | null
+  /** Deposito do empregador sobre o total de proventos; null no pro-labore (socio nao tem FGTS). */
+  fgts: ResultadoFgts | null
 }
 
 function conferir(calculado: number, informado: number | null): Conferencia | null {
@@ -92,5 +95,6 @@ export function calcularFolha(
     liquido: totalProventos - totalDescontos,
     conferenciaInss: conferir(inss.total, entrada.inssInformado),
     conferenciaIrrf: conferir(irrf.escolhida.irrf, entrada.irrfInformado),
+    fgts: entrada.modalidade === 'prolabore' ? null : calcularFgts(totalProventos),
   }
 }

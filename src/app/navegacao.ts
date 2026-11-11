@@ -9,6 +9,8 @@ export interface ItemNavegacao {
 
 export interface GrupoNavegacao {
   titulo: string
+  /** Cor que identifica o grupo na barra lateral (token de cor do tema). */
+  cor: 'primary' | 'info' | 'accent' | 'ink-subtle'
   itens: ItemNavegacao[]
 }
 
@@ -16,6 +18,7 @@ export interface GrupoNavegacao {
 export const NAVEGACAO: GrupoNavegacao[] = [
   {
     titulo: 'Cálculos',
+    cor: 'primary',
     itens: [
       {
         rota: 'folha',
@@ -30,6 +33,12 @@ export const NAVEGACAO: GrupoNavegacao[] = [
         icone: 'ferias',
       },
       {
+        rota: 'decimo',
+        rotulo: '13º salário',
+        descricao: '1ª parcela (adiantamento) e 2ª parcela com INSS, IRRF e FGTS, por avos e médias.',
+        icone: 'calendario',
+      },
+      {
         rota: 'rescisao',
         rotulo: 'Rescisão',
         descricao: 'Cálculo e conferência das verbas rescisórias, encargos e divergências com a folha de pagamento.',
@@ -39,6 +48,7 @@ export const NAVEGACAO: GrupoNavegacao[] = [
   },
   {
     titulo: 'Registros',
+    cor: 'info',
     itens: [
       {
         rota: 'conferencias',
@@ -56,6 +66,7 @@ export const NAVEGACAO: GrupoNavegacao[] = [
   },
   {
     titulo: 'Clientes',
+    cor: 'accent',
     itens: [
       {
         rota: 'instituto-terra',
@@ -67,6 +78,7 @@ export const NAVEGACAO: GrupoNavegacao[] = [
   },
   {
     titulo: 'Configuração',
+    cor: 'ink-subtle',
     itens: [
       {
         rota: 'parametros',

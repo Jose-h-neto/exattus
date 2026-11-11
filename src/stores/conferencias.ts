@@ -4,7 +4,7 @@ import { gravarJson, lerJson } from '@/lib/armazenamento'
 
 const CHAVE = 'exattus:conferencias'
 
-export type TipoConferencia = 'folha' | 'ferias' | 'rescisao'
+export type TipoConferencia = 'folha' | 'ferias' | 'decimo' | 'rescisao'
 
 export interface ResumoConferencia {
   /** Texto curto com o contexto do calculo (dias, modalidade, periodo). */
@@ -37,7 +37,7 @@ function ehListaDeConferencias(valor: unknown): valor is Conferencia[] {
         typeof item === 'object' &&
         item !== null &&
         typeof item.id === 'string' &&
-        (item.tipo === 'folha' || item.tipo === 'ferias' || item.tipo === 'rescisao') &&
+        (item.tipo === 'folha' || item.tipo === 'ferias' || item.tipo === 'decimo' || item.tipo === 'rescisao') &&
         typeof item.resumo === 'object' &&
         typeof item.formulario === 'object',
     )

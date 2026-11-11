@@ -4,7 +4,7 @@
  * Mesma regra da conferencia da rescisao: |informado - calculado| <= tolerancia.
  */
 
-export type ChaveItemLote = 'proventos' | 'descontos' | 'inss' | 'irrf' | 'liquido'
+export type ChaveItemLote = 'proventos' | 'descontos' | 'inss' | 'irrf' | 'liquido' | 'fgts'
 
 export type SituacaoItemLote = 'confere' | 'divergente' | 'nao_informado'
 
@@ -18,7 +18,7 @@ export interface ItemConferenciaLote {
   situacao: SituacaoItemLote
 }
 
-export const CHAVES_ITENS_LOTE: readonly ChaveItemLote[] = ['proventos', 'descontos', 'inss', 'irrf', 'liquido']
+export const CHAVES_ITENS_LOTE: readonly ChaveItemLote[] = ['proventos', 'descontos', 'inss', 'irrf', 'liquido', 'fgts']
 
 export function conferirValor(calculado: number, informado: number | null, tolerancia: number) {
   if (informado === null) {

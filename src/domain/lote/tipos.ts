@@ -1,7 +1,7 @@
 import type { ProfessorHoraAula, TabelaHoraAula } from '../horaAula'
 import type { ItemConferenciaLote } from './conferencia'
 
-export type TipoLinhaLote = 'folha' | 'ferias'
+export type TipoLinhaLote = 'folha' | 'ferias' | 'decimo'
 
 export type StatusLinhaLote = 'confere' | 'divergente' | 'sem_informado' | 'erro'
 
@@ -17,7 +17,7 @@ export interface LinhaLote {
   cpf: string
   /** Veio da aba Hora-aula (e uma folha mensal de professor por hora-aula). */
   horaAula?: boolean
-  /** Formulario do calculo (FormularioFolha ou FormularioFerias), para reabrir na tela do calculo. */
+  /** Formulario do calculo (FormularioFolha, FormularioFerias ou FormularioDecimo), para reabrir na tela do calculo. */
   formulario: Record<string, unknown>
   status: StatusLinhaLote
   erros: string[]
@@ -34,6 +34,8 @@ export interface ResumoLote {
   erro: number
   folha: number
   ferias: number
+  /** 13o salario (lotes importados antes do modulo de 13o nao tem o campo). */
+  decimo?: number
 }
 
 export interface Empresa {
@@ -79,6 +81,7 @@ export function resumirLinhas(linhas: readonly LinhaLote[]): ResumoLote {
     erro: contar((linha) => linha.status === 'erro'),
     folha: contar((linha) => linha.tipo === 'folha'),
     ferias: contar((linha) => linha.tipo === 'ferias'),
+    decimo: contar((linha) => linha.tipo === 'decimo'),
   }
 }
 

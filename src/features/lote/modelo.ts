@@ -1,6 +1,6 @@
 /*
  * Gera o modelo de planilha da conferencia em lote, com o visual do sistema:
- * abas Instrucoes, Lote, Folha e Ferias; grupos de colunas por cor, notas nos
+ * abas Instrucoes, Lote, Folha, Ferias e 13o salario; grupos de colunas por cor, notas nos
  * cabecalhos, validacao de dados e formatos de moeda, data e horas.
  */
 
@@ -13,6 +13,7 @@ import { ANO_VIGENCIA } from '@/domain/parametros'
 import {
   CAMPOS_ABA_LOTE,
   colunasHoraAula,
+  COLUNAS_DECIMO,
   COLUNAS_FERIAS,
   COLUNAS_FOLHA,
   normalizarCabecalho,
@@ -54,6 +55,7 @@ const FORMATO_DESCRITO: Record<TipoColuna, string> = {
   data: 'dd/mm/aaaa',
   modalidade: 'Lista',
   quantidade: 'Número de aulas',
+  parcela: 'Lista',
 }
 
 function descreverFormato(coluna: ColunaLote): string {
@@ -95,6 +97,8 @@ function validacao(coluna: ColunaLote): DataValidation | null {
       }
     case 'modalidade':
       return { type: 'list', formulae: ['"Empregado,Pró-labore"'], ...erroValidacao('Modalidade inválida', 'Escolha Empregado ou Pró-labore na lista.') }
+    case 'parcela':
+      return { type: 'list', formulae: ['"1ª parcela,2ª parcela"'], ...erroValidacao('Parcela inválida', 'Escolha 1ª parcela ou 2ª parcela na lista.') }
     case 'quantidade':
       return { type: 'decimal', operator: 'between', formulae: [0, 9999], ...erroValidacao('Quantidade inválida', 'Informe o número de aulas no mês, ex.: 40.') }
     default:
@@ -260,8 +264,8 @@ function abaInstrucoes(aba: Worksheet, contexto: ContextoModelo) {
   const passos: [string, string, string][] = [
     ['1', 'Aba Lote', 'Informe a empresa, o CNPJ e a competência. O CNPJ coloca o lote na pasta certa do cofre.'],
     tabelaHoraAula
-      ? ['2', 'Abas Folha, Hora-aula e Férias', 'Uma linha por funcionário. Professores por hora-aula vão na aba Hora-aula. Abas vazias são ignoradas.']
-      : ['2', 'Aba Folha e/ou Férias', 'Uma linha por funcionário. Pode usar só uma das abas; a aba vazia é ignorada.'],
+      ? ['2', 'Abas Folha, Hora-aula, Férias e 13º', 'Uma linha por funcionário. Professores por hora-aula vão na aba Hora-aula. Abas vazias são ignoradas.']
+      : ['2', 'Abas Folha, Férias e 13º', 'Uma linha por funcionário. Pode usar só as abas que precisar; abas vazias são ignoradas.'],
     ['3', 'Valores para conferir', 'Nas colunas rosa, copie o que está na folha do cliente. O sistema compara com o próprio cálculo.'],
     ['4', 'Importe no Exattus', 'Salve o arquivo (.xlsx) e importe. Você vê os erros por linha antes de confirmar.'],
   ]
@@ -374,6 +378,7 @@ function abaInstrucoes(aba: Worksheet, contexto: ContextoModelo) {
   }
 
   dicionario('Férias', COLUNAS_FERIAS)
+  dicionario('13º salário', COLUNAS_DECIMO)
 
   titulo('Dicas')
 
@@ -504,6 +509,7 @@ export async function gerarModelo(empresa?: Empresa): Promise<Blob> {
   }
 
   abaDados(pasta.addWorksheet('Férias', opcoesDados(COR.accent)), 'Conferência em lote  ·  Férias', COLUNAS_FERIAS)
+  abaDados(pasta.addWorksheet('13º salário', opcoesDados(COR.success)), 'Conferência em lote  ·  13º salário (1ª ou 2ª parcela)', COLUNAS_DECIMO)
 
   pasta.views = [{ x: 0, y: 0, width: 20000, height: 12000, firstSheet: 0, activeTab: 0, visibility: 'visible' }]
 

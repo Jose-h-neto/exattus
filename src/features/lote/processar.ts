@@ -1,11 +1,12 @@
 /*
  * Calcula cada funcionario da planilha com o motor do sistema. Cada linha vira
- * o mesmo formulario das telas de Folha e Ferias, passa pelas mesmas validacoes
- * (interpretarFolha / interpretarFerias) e e conferida com os valores da folha.
+ * o mesmo formulario das telas de Folha, Ferias e 13o, passa pelas mesmas validacoes
+ * (interpretarFolha / interpretarFerias / interpretarDecimo) e e conferida com os valores da folha.
  */
 
 import { formatarData } from '@/domain/datas'
 import { paraCentavos } from '@/domain/dinheiro'
+import { calcularDecimo, ROTULO_PARCELA, type ParcelaDecimo } from '@/domain/decimo'
 import { calcularFerias } from '@/domain/ferias'
 import { calcularFolha } from '@/domain/folha'
 import { formatarAulas, type ProfessorHoraAula, type TabelaHoraAula } from '@/domain/horaAula'
@@ -17,6 +18,7 @@ import {
 } from '@/domain/lote/conferencia'
 import type { LinhaLote } from '@/domain/lote/tipos'
 import type { TabelaInss, TabelaIrrf } from '@/domain/parametros'
+import { formularioDecimoPadrao, interpretarDecimo, type FormularioDecimo } from '@/features/decimo'
 import { formularioFeriasPadrao, interpretarFerias, sugerirPagamento, type FormularioFerias } from '@/features/ferias'
 import { copiarFormularioFolha, formularioFolhaPadrao, interpretarFolha, type FormularioFolha } from '@/features/folha'
 
@@ -69,6 +71,14 @@ const ROTULOS_FERIAS: Partial<Record<keyof FormularioFerias, string>> = {
   inssManual: 'INSS manual (R$)',
 }
 
+const ROTULOS_DECIMO: Partial<Record<keyof FormularioDecimo, string>> = {
+  salario: 'Salário base',
+  medias: 'Médias (R$)',
+  avos: 'Avos',
+  dependentes: 'Dependentes IRRF',
+  primeiraParcelaPaga: '1ª parcela paga (R$)',
+}
+
 function rotuloInformado(registro: RegistroPlanilha, campo: string): string {
   const colunas = registro.tipo === 'hora_aula' ? COLUNAS_HORA_AULA_FIXAS : COLUNAS[registro.tipo]
 
@@ -93,6 +103,7 @@ function lerInformados(registro: RegistroPlanilha, erros: string[]): Informados 
     inss: 'inssInformado',
     irrf: 'irrfInformado',
     liquido: 'liquidoInformado',
+    fgts: 'fgtsInformado',
   }
 
   const informados = {} as Informados
@@ -111,8 +122,9 @@ function lerInformados(registro: RegistroPlanilha, erros: string[]): Informados 
   return informados
 }
 
+/** fgts ausente (pro-labore): o item nao entra na conferencia. */
 function itensConferidos(
-  calculados: Record<ChaveItemLote, number>,
+  calculados: Omit<Record<ChaveItemLote, number>, 'fgts'> & { fgts: number | null },
   informados: Informados,
   tolerancia: number,
   rotuloBruto: string,
@@ -123,13 +135,14 @@ function itensConferidos(
     inss: 'INSS',
     irrf: 'IRRF',
     liquido: 'Líquido',
+    fgts: 'FGTS (empregador)',
   }
 
-  return (Object.keys(descricoes) as ChaveItemLote[]).map((chave) => ({
-    chave,
-    descricao: descricoes[chave],
-    ...conferirValor(calculados[chave], informados[chave], tolerancia),
-  }))
+  return (Object.keys(descricoes) as ChaveItemLote[]).flatMap((chave) => {
+    const calculado = calculados[chave]
+
+    return calculado === null ? [] : [{ chave, descricao: descricoes[chave], ...conferirValor(calculado, informados[chave], tolerancia) }]
+  })
 }
 
 function errosDoFormulario<T extends string>(erros: Partial<Record<T, string>>, rotulos: Partial<Record<T, string>>): string[] {
@@ -159,7 +172,7 @@ function montarLinha(
   return {
     id: `${registro.tipo}-${registro.linha}`,
     // Hora-aula e uma folha mensal: abre na tela de Folha.
-    tipo: registro.tipo === 'ferias' ? 'ferias' : 'folha',
+    tipo: registro.tipo === 'hora_aula' ? 'folha' : registro.tipo,
     ...(registro.tipo === 'hora_aula' ? { horaAula: true } : {}),
     linha: registro.linha,
     ...dados,
@@ -262,6 +275,7 @@ function conferirFolha(resultado: ReturnType<typeof calcularFolha> | null, infor
           inss: resultado.inss.total,
           irrf: resultado.irrf.escolhida.irrf,
           liquido: resultado.liquido,
+          fgts: resultado.fgts?.valor ?? null,
         },
         informados,
         tolerancia,
@@ -365,6 +379,7 @@ function processarFerias(registro: RegistroPlanilha, tolerancia: number, tabelas
           inss: resultado.inssUsado,
           irrf: resultado.irrf.escolhida.irrf,
           liquido: resultado.liquido,
+          fgts: resultado.fgts.valor,
         },
         informados,
         tolerancia,
@@ -380,6 +395,61 @@ function processarFerias(registro: RegistroPlanilha, tolerancia: number, tabelas
   return montarLinha(registro, dados, { ...form }, erros, itens, detalhe)
 }
 
+function processarDecimo(registro: RegistroPlanilha, tolerancia: number, tabelas: Tabelas): LinhaLote {
+  const v = registro.valores
+  const erros: string[] = []
+  const dados = identificacao(registro, erros)
+  const form = formularioDecimoPadrao()
+
+  form.referencia = dados.nome
+
+  const parcelaValida = v.parcela === 'primeira' || v.parcela === 'segunda'
+
+  if (parcelaValida) form.parcela = v.parcela as ParcelaDecimo
+  else erros.push(v.parcela ? 'Parcela: escolha 1ª parcela ou 2ª parcela.' : 'Parcela: informe 1ª parcela ou 2ª parcela.')
+
+  form.salario = v.salario ?? ''
+  form.medias = v.medias ?? ''
+  form.avos = v.avos || '12'
+  form.dependentes = v.dependentes || '0'
+  form.primeiraParcelaPaga = v.primeiraParcelaPaga ?? ''
+
+  if (parcelaValida && form.parcela === 'primeira' && form.primeiraParcelaPaga) {
+    erros.push('1ª parcela paga (R$): só se aplica à 2ª parcela.')
+  }
+
+  const leitura = interpretarDecimo(form)
+
+  if (leitura.vazio) erros.push('Salário base: informe o salário.')
+
+  erros.push(...errosDoFormulario(leitura.erros, ROTULOS_DECIMO))
+
+  const informados = lerInformados(registro, erros)
+  const resultado = leitura.entrada && parcelaValida ? calcularDecimo(leitura.entrada, tabelas.inss, tabelas.irrf) : null
+
+  const itens = resultado
+    ? itensConferidos(
+        {
+          proventos: resultado.bruto,
+          descontos: resultado.totalDescontos,
+          inss: resultado.inss?.total ?? 0,
+          irrf: resultado.irrf?.escolhida.irrf ?? 0,
+          liquido: resultado.liquido,
+          fgts: resultado.fgts.valor,
+        },
+        informados,
+        tolerancia,
+        'Total bruto',
+      )
+    : []
+
+  const detalhe = resultado
+    ? `${ROTULO_PARCELA[resultado.entrada.parcela]} · ${resultado.entrada.avos}/12 avos` + (resultado.entrada.medias > 0 ? ' · com médias' : '')
+    : '13º salário'
+
+  return montarLinha(registro, dados, { ...form }, erros, itens, detalhe)
+}
+
 export function processarRegistros(
   registros: readonly RegistroPlanilha[],
   tolerancia: number,
@@ -389,6 +459,7 @@ export function processarRegistros(
   return registros.map((registro) => {
     if (registro.tipo === 'hora_aula') return processarHoraAula(registro, tolerancia, tabelas, instituicao)
     if (registro.tipo === 'ferias') return processarFerias(registro, tolerancia, tabelas)
+    if (registro.tipo === 'decimo') return processarDecimo(registro, tolerancia, tabelas)
 
     return processarFolha(registro, tolerancia, tabelas)
   })

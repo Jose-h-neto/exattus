@@ -24,6 +24,7 @@ import UiTabs from '@/components/ui/UiTabs.vue'
 import { formatarData, lerData, nomeCompetencia } from '@/domain/datas'
 import { formatarMoeda, formatarPercentual } from '@/domain/dinheiro'
 import { calcularFerias, separarCompetencias } from '@/domain/ferias'
+import { encargoFgts } from '@/domain/fgts'
 import { ANO_VIGENCIA } from '@/domain/parametros'
 import {
   aoAlternarAbono,
@@ -428,6 +429,7 @@ watch(
             { rotulo: 'Base de cálculo do IRRF', valor: resultado.irrf.escolhida.base },
             { rotulo: 'Verbas isentas (abono)', valor: resultado.abono },
           ]"
+          :encargos="encargoFgts(resultado.fgts, 'FGTS sobre férias + 1/3')"
         />
 
         <section class="vidro rounded-lg">

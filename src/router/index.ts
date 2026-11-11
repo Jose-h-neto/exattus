@@ -15,6 +15,7 @@ const router = createRouter({
     { path: '/', redirect: { name: 'folha' } },
     { path: '/folha', name: 'folha', component: () => import('@/views/FolhaView.vue') },
     { path: '/ferias', name: 'ferias', component: () => import('@/views/FeriasView.vue') },
+    { path: '/decimo', name: 'decimo', component: () => import('@/views/DecimoView.vue') },
     { path: '/rescisao', name: 'rescisao', component: () => import('@/views/RescisaoView.vue') },
     { path: '/conferencias', name: 'conferencias', component: () => import('@/views/ConferenciasView.vue') },
     { path: '/cofre', name: 'cofre', component: () => import('@/views/CofreView.vue') },

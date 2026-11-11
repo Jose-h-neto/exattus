@@ -50,8 +50,9 @@ useAtalhos(
   })),
 )
 
-/* Arvore do cofre: pastas por empresa e, na pasta aberta, Lotes / Hora-aula / Professores. */
-const LIMITE_PASTAS = 6
+/* Arvore do cofre: pastas por empresa e, na pasta aberta, Lotes / Hora-aula / Professores.
+ * Poucas pastas visiveis para o menu caber na tela sem rolagem; as demais ficam em "Ver todas". */
+const LIMITE_PASTAS = 4
 
 const empresaAtiva = computed(() => (route.meta.navegacao === 'cofre' ? String(route.params.empresaId ?? '') : ''))
 const abaAtiva = computed(() => String(route.query.aba ?? 'lotes'))
@@ -113,10 +114,10 @@ function folhaHoraAula() {
 
 <template>
   <!-- Estrutura e classes do componente Sidebar do design system (ex-sidebar, ex-nav-item). -->
-  <nav class="ex-sidebar !w-full" aria-label="Navegação principal">
-    <div class="flex items-center justify-between gap-2 pb-6 pl-2">
+  <nav class="ex-sidebar !w-full !py-3.5" aria-label="Navegação principal">
+    <div class="flex items-center justify-between gap-2 pb-3 pl-2">
       <span class="flex items-center gap-2.5">
-        <AppLogo :tamanho="30" class="text-primary" />
+        <AppLogo :tamanho="28" class="text-primary" />
         <span class="text-xl leading-none font-extrabold tracking-[-0.03em] text-ink">Exattus</span>
       </span>
 
@@ -132,8 +133,17 @@ function folhaHoraAula() {
     </div>
 
     <div class="-mx-1 flex-1 overflow-y-auto px-1">
-      <template v-for="grupo in NAVEGACAO" :key="grupo.titulo">
-        <div class="ex-sidebar__section">{{ grupo.titulo }}</div>
+      <section
+        v-for="grupo in NAVEGACAO"
+        :key="grupo.titulo"
+        class="grupo"
+        :style="{ '--grupo': `var(--${grupo.cor})` }"
+        :aria-label="grupo.titulo"
+      >
+        <h2 class="grupo__titulo">
+          <span class="grupo__marca" aria-hidden="true" />
+          {{ grupo.titulo }}
+        </h2>
         <template v-for="item in grupo.itens" :key="item.rota">
           <RouterLink v-slot="{ href, navigate, isExactActive }" :to="{ name: item.rota }" custom>
             <a
@@ -144,7 +154,7 @@ function folhaHoraAula() {
               :title="`${item.rotulo} (Alt+${teclaDe[item.rota]})`"
               @click="navigate($event); emit('navegar')"
             >
-              <UiIcon :nome="item.icone" :tamanho="20" />
+              <UiIcon :nome="item.icone" :tamanho="18" class="item__icone" />
               <span class="ex-nav-item__label truncate">{{ item.rotulo }}</span>
               <kbd class="atalho" aria-hidden="true">Alt {{ teclaDe[item.rota] }}</kbd>
               <span v-if="item.rota === 'conferencias' && total > 0" class="ex-nav-item__badge">
@@ -211,31 +221,132 @@ function folhaHoraAula() {
             </li>
           </ul>
         </template>
-      </template>
-
-      <div class="ex-sidebar__section">Ações rápidas</div>
-      <button type="button" class="ex-nav-item" @click="importarPlanilha">
-        <UiIcon nome="enviar" :tamanho="20" />
-        <span class="ex-nav-item__label truncate">Importar planilha</span>
-      </button>
-      <button v-if="instituicoes.length" type="button" class="ex-nav-item" @click="folhaHoraAula">
-        <UiIcon nome="relogio" :tamanho="20" />
-        <span class="ex-nav-item__label truncate">Folha por hora-aula</span>
-      </button>
+      </section>
     </div>
 
-    <div class="ex-sidebar__footer space-y-1">
-      <button type="button" class="ex-nav-item" aria-keyshortcuts="Shift+?" @click="abrirAjudaAtalhos">
-        <kbd class="inline-grid size-5 place-items-center rounded-xs border border-line-strong font-mono text-[11px]">?</kbd>
-        <span class="ex-nav-item__label">Atalhos de teclado</span>
-      </button>
+    <div class="rodape">
+      <!-- Acoes rapidas: botoes compactos lado a lado, para nao ocupar uma secao inteira. -->
+      <div class="grid gap-1.5" :class="instituicoes.length ? 'grid-cols-2' : 'grid-cols-1'" role="group" aria-label="Ações rápidas">
+        <button type="button" class="acao" title="Importar planilha de conferência em lote" @click="importarPlanilha">
+          <UiIcon nome="enviar" :tamanho="15" class="shrink-0" />
+          <span class="truncate">Importar</span>
+        </button>
+        <button v-if="instituicoes.length" type="button" class="acao" title="Folha por hora-aula" @click="folhaHoraAula">
+          <UiIcon nome="relogio" :tamanho="15" class="shrink-0" />
+          <span class="truncate">Hora-aula</span>
+        </button>
+      </div>
 
-      <AppAparencia @aberto="(valor) => emit('aparencia', valor)" />
+      <div class="flex items-center gap-1">
+        <div class="min-w-0 flex-1">
+          <AppAparencia @aberto="(valor) => emit('aparencia', valor)" />
+        </div>
+        <button
+          type="button"
+          class="ex-btn ex-btn--ghost ex-btn--sm ex-btn--icon shrink-0"
+          aria-keyshortcuts="Shift+?"
+          title="Atalhos de teclado (?)"
+          @click="abrirAjudaAtalhos"
+        >
+          <kbd class="inline-grid size-5 place-items-center rounded-xs border border-line-strong font-mono text-[11px]" aria-hidden="true">?</kbd>
+          <span class="ex-sr">Atalhos de teclado</span>
+        </button>
+      </div>
     </div>
   </nav>
 </template>
 
 <style scoped>
+/*
+ * Hierarquia: titulo do grupo forte (escuro, negrito, com a marca de cor do
+ * grupo) > itens (medios) > pastas do cofre (pequenas). Os grupos sao
+ * separados por uma linha; o icone de cada item usa a cor do seu grupo.
+ * Medidas compactas para o menu caber na tela sem rolagem.
+ */
+.grupo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.grupo + .grupo {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.grupo__titulo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px var(--space-3) 4px;
+  font: 800 11px/16px var(--font-sans);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+.grupo__marca {
+  width: 3px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--grupo);
+}
+
+.grupo .ex-nav-item {
+  height: 34px;
+  gap: 10px;
+  font-size: 13.5px;
+}
+
+.item__icone {
+  flex-shrink: 0;
+  color: var(--grupo);
+}
+
+.rodape {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.rodape :deep(.ex-nav-item) {
+  height: 34px;
+  gap: 10px;
+  font-size: 13.5px;
+}
+
+.acao {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: transparent;
+  font: 600 12px/1 var(--font-sans);
+  color: var(--ink-muted);
+  cursor: pointer;
+}
+
+.acao:hover {
+  border-color: var(--line-strong);
+  background: var(--surface-hover);
+  color: var(--ink);
+}
+
+.acao:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 /* Dica do atalho: aparece ao passar o mouse ou focar o item. */
 .atalho {
   display: none;
@@ -253,7 +364,7 @@ function folhaHoraAula() {
 }
 
 .arvore {
-  margin: 2px 0 6px 18px;
+  margin: 1px 0 4px 18px;
 }
 
 .alternar {
@@ -282,10 +393,10 @@ function folhaHoraAula() {
   align-items: center;
   gap: 8px;
   min-width: 0;
-  height: 30px;
+  height: 27px;
   padding: 0 8px;
   border-radius: var(--radius-sm);
-  font: 600 13px/1 var(--font-sans);
+  font: 600 12.5px/1 var(--font-sans);
   color: var(--ink-muted);
   text-decoration: none;
 }
@@ -296,7 +407,7 @@ function folhaHoraAula() {
 }
 
 .subitem--secao {
-  height: 28px;
+  height: 25px;
   font-weight: 500;
 }
 

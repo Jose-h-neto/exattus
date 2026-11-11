@@ -24,6 +24,8 @@ src/
     irrf.ts      IRRF: deduções legais x desconto simplificado + redução
     folha.ts     Cálculo da folha mensal
     ferias.ts    Cálculo de férias e rateio por competência
+    decimo.ts    13º salário: 1ª parcela (adiantamento) e 2ª parcela com INSS e IRRF
+    fgts.ts      FGTS (8%) do empregador, exibido fora do líquido
   features/      Estado e validação dos formulários de cada cálculo
   stores/        Estado compartilhado (tabela INSS, conferências salvas, avisos)
   components/
@@ -31,7 +33,7 @@ src/
     calculo/     Blocos de resultado reutilizados (demonstrativo, memórias, conferência)
     layout/      Estrutura da aplicação (barra lateral, cabeçalho de página)
     exattus/     Componentes do design system Exattus
-  views/         Telas: Folha mensal, Férias, Conferências salvas, Tabelas e parâmetros
+  views/         Telas: Folha mensal, Férias, 13º salário, Conferências salvas, Tabelas e parâmetros
   app/navegacao.ts  Fonte única dos menus e da trilha de navegação
 ```
 

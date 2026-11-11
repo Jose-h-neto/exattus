@@ -81,7 +81,20 @@ const filtros = computed(() => {
   ].filter((opcao) => opcao.valor === 'todos' || opcao.total > 0)
 })
 
-const temDoisTipos = computed(() => Boolean(lote.value?.resumo.folha && lote.value.resumo.ferias))
+const tiposPresentes = computed(() => {
+  const resumo = lote.value?.resumo
+  const tipos: { valor: TipoLinhaLote; rotulo: string; total: number }[] = [
+    { valor: 'folha', rotulo: NOME_ABA.folha, total: resumo?.folha ?? 0 },
+    { valor: 'ferias', rotulo: NOME_ABA.ferias, total: resumo?.ferias ?? 0 },
+    { valor: 'decimo', rotulo: '13º', total: resumo?.decimo ?? 0 },
+  ]
+
+  return tipos.filter((tipo) => tipo.total > 0)
+})
+
+const filtrosTipo = computed(() => [{ valor: 'todos' as const, rotulo: 'Todos' }, ...tiposPresentes.value])
+
+const TOM_TIPO: Record<TipoLinhaLote, 'marca' | 'neutro' | 'sucesso'> = { folha: 'marca', ferias: 'neutro', decimo: 'sucesso' }
 
 function maiorDiferenca(linha: LinhaLote): number {
   return Math.max(0, ...linha.itens.map((item) => Math.abs(item.diferenca ?? 0)))
@@ -192,7 +205,7 @@ async function confirmarExclusao() {
             <dt class="text-xs text-muted">Funcionários</dt>
             <dd class="num text-xl font-semibold text-ink">{{ lote.resumo.total }}</dd>
             <dd class="text-xs text-muted">
-              {{ [lote.resumo.folha ? `Folha ${lote.resumo.folha}` : '', lote.resumo.ferias ? `Férias ${lote.resumo.ferias}` : ''].filter(Boolean).join(' · ') }}
+              {{ tiposPresentes.map((tipo) => `${tipo.rotulo} ${tipo.total}`).join(' · ') }}
             </dd>
           </div>
           <div class="border-l border-line px-4 py-3">
@@ -229,9 +242,9 @@ async function confirmarExclusao() {
                 <span class="num text-[11px] opacity-75">{{ opcao.total }}</span>
               </button>
             </div>
-            <div v-if="temDoisTipos" role="radiogroup" aria-label="Filtrar por tipo" class="flex gap-1 md:border-l md:border-line md:pl-2">
+            <div v-if="tiposPresentes.length > 1" role="radiogroup" aria-label="Filtrar por tipo" class="flex gap-1 md:border-l md:border-line md:pl-2">
               <button
-                v-for="opcao in [{ valor: 'todos', rotulo: 'Todos' }, { valor: 'folha', rotulo: 'Folha' }, { valor: 'ferias', rotulo: 'Férias' }] as const"
+                v-for="opcao in filtrosTipo"
                 :key="opcao.valor"
                 type="button"
                 role="radio"
@@ -257,7 +270,7 @@ async function confirmarExclusao() {
         </header>
 
         <div class="overflow-x-auto">
-          <table class="tabela min-w-[980px]">
+          <table class="tabela min-w-[1060px]">
             <thead>
               <tr>
                 <th scope="col" class="pl-5">Funcionário</th>
@@ -266,6 +279,7 @@ async function confirmarExclusao() {
                 <th scope="col" class="num">Líquido calculado</th>
                 <th scope="col" class="num">Líquido folha</th>
                 <th scope="col" class="num">Diferença</th>
+                <th scope="col" class="num" title="Depósito do empregador: não desconta do líquido">FGTS</th>
                 <th scope="col" class="pr-5"><span class="sr-only">Ações</span></th>
               </tr>
             </thead>
@@ -289,7 +303,7 @@ async function confirmarExclusao() {
                       </span>
                     </button>
                   </td>
-                  <td><UiBadge :tom="linha.horaAula ? 'info' : linha.tipo === 'folha' ? 'marca' : 'neutro'">{{ linha.horaAula ? NOME_ABA.hora_aula : NOME_ABA[linha.tipo] }}</UiBadge></td>
+                  <td><UiBadge :tom="linha.horaAula ? 'info' : TOM_TIPO[linha.tipo]">{{ linha.horaAula ? NOME_ABA.hora_aula : NOME_ABA[linha.tipo] }}</UiBadge></td>
                   <td>
                     <UiBadge :tom="STATUS[linha.status].tom">
                       {{ linha.status === 'divergente' ? `${divergentes(linha)} ${divergentes(linha) === 1 ? 'divergência' : 'divergências'}` : ROTULO_STATUS[linha.status] }}
@@ -305,6 +319,9 @@ async function confirmarExclusao() {
                   >
                     {{ item(linha, 'liquido')?.diferenca != null ? moedaSinal(item(linha, 'liquido')!.diferenca!) : '—' }}
                   </td>
+                  <td class="num" :class="item(linha, 'fgts')?.situacao === 'divergente' && 'font-semibold text-negative'">
+                    {{ item(linha, 'fgts') ? formatarMoeda(item(linha, 'fgts')!.calculado) : '—' }}
+                  </td>
                   <td class="pr-5">
                     <div class="flex justify-end">
                       <RouterLink
@@ -318,7 +335,7 @@ async function confirmarExclusao() {
                   </td>
                 </tr>
                 <tr v-if="aberta === linha.id">
-                  <td colspan="7" class="!border-t-0 bg-subtle/50 !py-3 pr-5 pl-12">
+                  <td colspan="8" class="!border-t-0 bg-subtle/50 !py-3 pr-5 pl-12">
                     <div v-if="linha.erros.length" class="mb-3 text-xs">
                       <p class="mb-1 font-semibold text-warning">Corrija na planilha</p>
                       <ul class="list-disc space-y-0.5 pl-4 text-ink-2">
@@ -352,7 +369,7 @@ async function confirmarExclusao() {
                 </tr>
               </template>
               <tr v-if="!visiveis.length">
-                <td colspan="7" class="py-10 text-center text-muted">Nenhum funcionário neste filtro.</td>
+                <td colspan="8" class="py-10 text-center text-muted">Nenhum funcionário neste filtro.</td>
               </tr>
             </tbody>
           </table>

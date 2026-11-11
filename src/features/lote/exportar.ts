@@ -17,6 +17,7 @@ const ROTULO_ITEM: Record<ChaveItemLote, string> = {
   inss: 'INSS',
   irrf: 'IRRF',
   liquido: 'Líquido',
+  fgts: 'FGTS (empregador)',
 }
 
 export const ROTULO_STATUS: Record<StatusLinhaLote, string> = {

@@ -61,7 +61,11 @@ const excluindoPasta = ref(false)
 const loteParaExcluir = ref<CabecalhoLote | null>(null)
 
 function tipos(lote: CabecalhoLote): string {
-  return [lote.resumo.folha ? `Folha ${lote.resumo.folha}` : '', lote.resumo.ferias ? `Férias ${lote.resumo.ferias}` : '']
+  return [
+    lote.resumo.folha ? `Folha ${lote.resumo.folha}` : '',
+    lote.resumo.ferias ? `Férias ${lote.resumo.ferias}` : '',
+    lote.resumo.decimo ? `13º ${lote.resumo.decimo}` : '',
+  ]
     .filter(Boolean)
     .join(' · ')
 }

@@ -343,8 +343,9 @@ async function importar() {
           <dd v-if="totalHoraAula" class="text-xs text-muted">{{ totalHoraAula }} por hora-aula</dd>
         </div>
         <div class="border-t border-line px-4 py-3 sm:border-t-0 sm:border-l">
-          <dt class="text-xs text-muted">{{ NOME_ABA.ferias }}</dt>
-          <dd class="num text-xl font-semibold">{{ resumo.ferias }}</dd>
+          <dt class="text-xs text-muted">{{ resumo.decimo ? `${NOME_ABA.ferias} e 13º` : NOME_ABA.ferias }}</dt>
+          <dd class="num text-xl font-semibold">{{ resumo.ferias + (resumo.decimo ?? 0) }}</dd>
+          <dd v-if="resumo.decimo" class="text-xs text-muted">{{ resumo.ferias }} férias · {{ resumo.decimo }} de 13º</dd>
         </div>
         <div class="border-t border-l border-line px-4 py-3 sm:border-t-0" :class="resumo.erro > 0 && 'bg-warning-soft'">
           <dt class="text-xs text-muted">Com erro</dt>
@@ -352,7 +353,7 @@ async function importar() {
         </div>
       </dl>
 
-      <p v-if="!linhas.length" class="ex-error"><UiIcon nome="alerta" :tamanho="14" />Nenhum funcionário encontrado nas abas Folha e Férias.</p>
+      <p v-if="!linhas.length" class="ex-error"><UiIcon nome="alerta" :tamanho="14" />Nenhum funcionário encontrado nas abas Folha, Férias e 13º salário.</p>
 
       <section v-if="comErro.length" aria-labelledby="titulo-erros-importacao">
         <h3 id="titulo-erros-importacao" class="text-sm font-bold">

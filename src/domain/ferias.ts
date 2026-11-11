@@ -1,5 +1,6 @@
 import { chaveMes, somarDias } from './datas'
 import { dividirArredondando } from './dinheiro'
+import { calcularFgts, type ResultadoFgts } from './fgts'
 import { calcularInss, type ResultadoInss } from './inss'
 import { calcularIrrf, type ResultadoIrrf } from './irrf'
 import { IRRF_2026, type TabelaInss, type TabelaIrrf } from './parametros'
@@ -59,6 +60,8 @@ export interface ResultadoFerias {
   irrf: ResultadoIrrf
   totalDescontos: number
   liquido: number
+  /** Sobre ferias + 1/3; o abono pecuniario e o 1/3 do abono nao tem FGTS. */
+  fgts: ResultadoFgts
 }
 
 export function separarCompetencias(inicio: Date, dias: number): { chave: string; dias: number }[] {
@@ -185,5 +188,6 @@ export function calcularFerias(
     irrf,
     totalDescontos,
     liquido: Math.max(0, totalBruto - totalDescontos),
+    fgts: calcularFgts(tributavel),
   }
 }

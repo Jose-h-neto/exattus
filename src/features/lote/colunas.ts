@@ -10,7 +10,7 @@ import type { TipoLinhaLote } from '@/domain/lote/tipos'
 
 export type GrupoColuna = 'id' | 'aulas' | 'calc' | 'conf'
 
-export type TipoColuna = 'texto' | 'moeda' | 'inteiro' | 'horas' | 'data' | 'modalidade' | 'quantidade'
+export type TipoColuna = 'texto' | 'moeda' | 'inteiro' | 'horas' | 'data' | 'modalidade' | 'quantidade' | 'parcela'
 
 /** Aba de dados da planilha: Folha, Ferias ou Hora-aula (folha mensal de professor). */
 export type TipoAbaLote = TipoLinhaLote | 'hora_aula'
@@ -53,6 +53,7 @@ function conferir(bruto: string): ColunaLote[] {
     { campo: 'inssInformado', cabecalho: 'INSS', grupo: 'conf', tipo: 'moeda', largura: 14, nota: 'INSS descontado na folha do cliente.' },
     { campo: 'irrfInformado', cabecalho: 'IRRF', grupo: 'conf', tipo: 'moeda', largura: 14, nota: 'IRRF descontado na folha do cliente.' },
     { campo: 'liquidoInformado', cabecalho: 'Líquido', grupo: 'conf', tipo: 'moeda', largura: 16, nota: 'Líquido a receber na folha do cliente.' },
+    { campo: 'fgtsInformado', cabecalho: 'FGTS', grupo: 'conf', tipo: 'moeda', largura: 14, nota: 'FGTS do mês (8%) na folha do cliente. Encargo do empregador: não entra nos descontos.' },
   ]
 }
 
@@ -88,6 +89,17 @@ export const COLUNAS_FERIAS: ColunaLote[] = [
   ...conferir('Total bruto'),
 ]
 
+export const COLUNAS_DECIMO: ColunaLote[] = [
+  ...IDENTIFICACAO,
+  { campo: 'parcela', cabecalho: 'Parcela', grupo: 'calc', tipo: 'parcela', obrigatorio: true, largura: 13, nota: 'Obrigatório. Escolha na lista: 1ª parcela (adiantamento, sem INSS e IRRF) ou 2ª parcela (13º integral com INSS e IRRF, descontando a 1ª).', exemplo: '2ª parcela' },
+  { campo: 'salario', cabecalho: 'Salário base', grupo: 'calc', tipo: 'moeda', obrigatorio: true, positivo: true, largura: 15, nota: 'Obrigatório. Salário mensal.', exemplo: 'R$ 3.200,00' },
+  { campo: 'medias', cabecalho: 'Médias (R$)', grupo: 'calc', tipo: 'moeda', largura: 14, nota: 'Média MENSAL de horas extras, comissões e adicionais variáveis do ano. Soma-se ao salário antes dos avos.', exemplo: 'R$ 350,00' },
+  { campo: 'avos', cabecalho: 'Avos', grupo: 'calc', tipo: 'inteiro', minimo: 1, maximo: 12, largura: 9, nota: 'Meses do ano com 15 dias ou mais de trabalho, de 1 a 12. Em branco = 12.', exemplo: '12' },
+  { campo: 'dependentes', cabecalho: 'Dependentes IRRF', grupo: 'calc', tipo: 'inteiro', minimo: 0, maximo: 99, largura: 12, nota: 'Número de dependentes para o IRRF da 2ª parcela. Em branco = 0.', exemplo: '0' },
+  { campo: 'primeiraParcelaPaga', cabecalho: '1ª parcela paga (R$)', grupo: 'calc', tipo: 'moeda', largura: 15, nota: 'Só na 2ª parcela: valor pago como adiantamento. Em branco = metade do 13º calculado.' },
+  ...conferir('Total bruto'),
+]
+
 /** Colunas fixas da aba Hora-aula (as de aulas vem da tabela da instituicao). */
 export const COLUNAS_HORA_AULA_FIXAS: ColunaLote[] = [
   ...IDENTIFICACAO,
@@ -115,9 +127,9 @@ export function colunasHoraAula(tabela: TabelaHoraAula): ColunaLote[] {
   return [...IDENTIFICACAO, ...aulas, ...COLUNAS_HORA_AULA_FIXAS.slice(IDENTIFICACAO.length)]
 }
 
-export const COLUNAS: Record<TipoLinhaLote, ColunaLote[]> = { folha: COLUNAS_FOLHA, ferias: COLUNAS_FERIAS }
+export const COLUNAS: Record<TipoLinhaLote, ColunaLote[]> = { folha: COLUNAS_FOLHA, ferias: COLUNAS_FERIAS, decimo: COLUNAS_DECIMO }
 
-export const NOME_ABA: Record<TipoAbaLote, string> = { folha: 'Folha', ferias: 'Férias', hora_aula: 'Hora-aula' }
+export const NOME_ABA: Record<TipoAbaLote, string> = { folha: 'Folha', ferias: 'Férias', decimo: '13º salário', hora_aula: 'Hora-aula' }
 
 /** Campos da aba Lote, em formato de formulario (rotulo e valor ao lado). */
 export interface CampoAbaLote {

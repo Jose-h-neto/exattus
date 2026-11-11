@@ -116,6 +116,17 @@ function modalidade(valor: ReturnType<typeof valorBruto>): string {
   return texto(valor)
 }
 
+/** "1ª parcela", "1", "primeira", "adiantamento" -> primeira; "2ª parcela", "2", "segunda", "final" -> segunda. */
+function parcela(valor: ReturnType<typeof valorBruto>): string {
+  const normalizado = normalizarCabecalho(texto(valor))
+
+  if (!normalizado) return ''
+  if (/^1|primeira|adiantamento/.test(normalizado)) return 'primeira'
+  if (/^2|segunda|final/.test(normalizado)) return 'segunda'
+
+  return texto(valor)
+}
+
 function converter(coluna: ColunaLote, celula: Cell): string {
   const valor = valorBruto(celula.value)
 
@@ -131,6 +142,8 @@ function converter(coluna: ColunaLote, celula: Cell): string {
       return data(valor)
     case 'modalidade':
       return modalidade(valor)
+    case 'parcela':
+      return parcela(valor)
     default:
       return texto(valor)
   }
@@ -248,7 +261,7 @@ export async function lerPlanilha(arquivo: File): Promise<PlanilhaLida> {
   const avisos: string[] = []
   const registros: RegistroPlanilha[] = []
 
-  const tipos = ['folha', 'hora_aula', 'ferias'] as const
+  const tipos = ['folha', 'hora_aula', 'ferias', 'decimo'] as const
 
   for (const tipo of tipos) {
     const aba = localizarAba(abas, NOME_ABA[tipo])
@@ -257,7 +270,7 @@ export async function lerPlanilha(arquivo: File): Promise<PlanilhaLida> {
   }
 
   if (!tipos.some((tipo) => localizarAba(abas, NOME_ABA[tipo]))) {
-    avisos.push('A planilha não tem as abas "Folha", "Hora-aula" nem "Férias". Use o modelo do Exattus.')
+    avisos.push('A planilha não tem as abas "Folha", "Hora-aula", "Férias" nem "13º salário". Use o modelo do Exattus.')
   }
 
   return { lote: lerAbaLote(localizarAba(abas, 'Lote')), registros, avisos }

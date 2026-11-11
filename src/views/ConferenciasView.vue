@@ -25,15 +25,17 @@ const filtros: { valor: Filtro; rotulo: string }[] = [
   { valor: 'todos', rotulo: 'Todas' },
   { valor: 'folha', rotulo: 'Folha mensal' },
   { valor: 'ferias', rotulo: 'Férias' },
+  { valor: 'decimo', rotulo: '13º salário' },
   { valor: 'rescisao', rotulo: 'Rescisão' },
 ]
 
-const rotuloTipo: Record<TipoConferencia, string> = { folha: 'Folha mensal', ferias: 'Férias', rescisao: 'Rescisão' }
+const rotuloTipo: Record<TipoConferencia, string> = { folha: 'Folha mensal', ferias: 'Férias', decimo: '13º salário', rescisao: 'Rescisão' }
 
 const contagem = computed(() => ({
   todos: conferencias.value.length,
   folha: conferencias.value.filter((item) => item.tipo === 'folha').length,
   ferias: conferencias.value.filter((item) => item.tipo === 'ferias').length,
+  decimo: conferencias.value.filter((item) => item.tipo === 'decimo').length,
   rescisao: conferencias.value.filter((item) => item.tipo === 'rescisao').length,
 }))
 
@@ -139,6 +141,7 @@ function exportarCsv() {
           >
             Férias
           </RouterLink>
+          <RouterLink :to="{ name: 'decimo' }" class="ex-btn ex-btn--secondary">13º salário</RouterLink>
           <RouterLink :to="{ name: 'rescisao' }" class="ex-btn ex-btn--secondary">Rescisão</RouterLink>
         </div>
       </UiEmptyState>

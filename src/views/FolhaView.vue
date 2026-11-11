@@ -24,6 +24,7 @@ import UiSegmented from '@/components/ui/UiSegmented.vue'
 import UiTabs from '@/components/ui/UiTabs.vue'
 
 import { formatarMoeda, formatarPercentual } from '@/domain/dinheiro'
+import { encargoFgts } from '@/domain/fgts'
 import { calcularFolha } from '@/domain/folha'
 import { formatarAulas } from '@/domain/horaAula'
 import { formatarAdicional, formatarHoras } from '@/domain/horasExtras'
@@ -541,7 +542,9 @@ watch(
             { rotulo: 'Salário de contribuição (INSS)', valor: resultado.inss.baseConsiderada },
             { rotulo: 'Rendimento tributável', valor: resultado.irrf.rendimento },
             { rotulo: 'Base de cálculo do IRRF', valor: resultado.irrf.escolhida.base },
+            ...(resultado.fgts ? [{ rotulo: 'Base do FGTS', valor: resultado.fgts.base }] : []),
           ]"
+          :encargos="encargoFgts(resultado.fgts)"
         />
 
         <ConferenciaHolerite v-if="linhasConferencia.length" :linhas="linhasConferencia" />
