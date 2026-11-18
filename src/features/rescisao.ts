@@ -16,17 +16,13 @@ export interface PeriodoFormulario {
   faltas: string
 }
 
-export type ModoMedias = 'unica' | 'por_verba'
-
 export const CAMPOS_MEDIAS = ['mediasFerias', 'mediasDecimo', 'mediasAviso'] as const
 
 export interface FormularioRescisao {
   referencia: string
   salario: string
   adicionais: string
-  /** Unica: a mesma media entra nas tres verbas. Por verba: uma media para cada. */
-  mediasModo: ModoMedias
-  mediaUnica: string
+  /** Media mensal das variaveis de cada verba (ferias, 13o e aviso). */
   mediasFerias: string
   mediasDecimo: string
   mediasAviso: string
@@ -71,8 +67,6 @@ export function formularioRescisaoPadrao(): FormularioRescisao {
     referencia: '',
     salario: '',
     adicionais: '',
-    mediasModo: 'unica',
-    mediaUnica: '',
     mediasFerias: '',
     mediasDecimo: '',
     mediasAviso: '',
@@ -108,47 +102,29 @@ export function formularioRescisaoPadrao(): FormularioRescisao {
 
 export const formularioRescisao = reactive<FormularioRescisao>(formularioRescisaoPadrao())
 
-/**
- * Copia independente de um formulario salvo, convertendo formatos anteriores:
- * - media unica antiga (`medias`): vira o modo Unica com o mesmo valor;
- * - tres medias sem modo: Unica se forem iguais, Por verba se diferirem.
- */
-export function restaurarFormularioRescisao(salvo: object): Partial<FormularioRescisao> {
-  const copia: Partial<FormularioRescisao> & { medias?: string } = JSON.parse(JSON.stringify(salvo))
-
-  if (copia.medias !== undefined) {
-    copia.mediasModo ??= 'unica'
-    copia.mediaUnica ??= copia.medias
-    delete copia.medias
-  } else if (copia.mediasModo === undefined && CAMPOS_MEDIAS.some((campo) => copia[campo] !== undefined)) {
-    const valores = CAMPOS_MEDIAS.map((campo) => copia[campo] ?? '')
-
-    copia.mediasModo = new Set(valores).size === 1 ? 'unica' : 'por_verba'
-    copia.mediaUnica = copia.mediasModo === 'unica' ? valores[0] : ''
-  }
-
-  return copia
+/** Formatos anteriores: uma media so (`medias`) e o modo "Unica" (`mediasModo` + `mediaUnica`). */
+interface FormularioRescisaoAntigo {
+  medias?: string
+  mediasModo?: 'unica' | 'por_verba'
+  mediaUnica?: string
 }
 
 /**
- * Troca a forma de informar as medias sem perder o que foi digitado:
- * - Unica -> Por verba: as medias vazias recebem a media unica (so se ajusta a que difere);
- * - Por verba -> Unica: tres valores iguais viram a media unica; diferentes ficam guardados.
+ * Copia independente de um formulario salvo. As medias passaram a ser sempre
+ * por verba: a media unica de formatos anteriores vai para as tres verbas,
+ * reproduzindo o calculo da epoca.
  */
-export function definirModoMedias(formulario: FormularioRescisao, modo: ModoMedias) {
-  if (modo === formulario.mediasModo) return
+export function restaurarFormularioRescisao(salvo: object): Partial<FormularioRescisao> {
+  const { medias, mediasModo, mediaUnica, ...copia }: Partial<FormularioRescisao> & FormularioRescisaoAntigo = JSON.parse(
+    JSON.stringify(salvo),
+  )
+  const unica = medias ?? (mediasModo === 'unica' ? mediaUnica : undefined)
 
-  if (modo === 'por_verba') {
-    for (const campo of CAMPOS_MEDIAS) {
-      if (!formulario[campo].trim()) formulario[campo] = formulario.mediaUnica
-    }
-  } else {
-    const valores = new Set(CAMPOS_MEDIAS.map((campo) => formulario[campo].trim()))
-
-    if (valores.size === 1) formulario.mediaUnica = [...valores][0] ?? ''
+  if (unica !== undefined) {
+    for (const campo of CAMPOS_MEDIAS) copia[campo] = unica
   }
 
-  formulario.mediasModo = modo
+  return copia
 }
 
 /* Regras de interface ------------------------------------------------- */
@@ -340,10 +316,7 @@ export function interpretarRescisao(formulario: FormularioRescisao) {
     return { gozado: periodo.gozado, faltas: Number.isInteger(faltas) ? (faltas as number) : 0 }
   })
 
-  // Modo Unica: a mesma media nas tres verbas. So o modo escolhido e lido (e validado).
-  const mediaUnica = formulario.mediasModo === 'unica' ? dinheiro('mediaUnica') : 0
-  const media = (campo: (typeof CAMPOS_MEDIAS)[number]) =>
-    formulario.mediasModo === 'unica' ? mediaUnica : dinheiro(campo)
+  const media = (campo: (typeof CAMPOS_MEDIAS)[number]) => dinheiro(campo)
 
   const indenizacao480Texto = formulario.indenizacao480.trim()
   const indenizacao480 = indenizacao480Texto ? dinheiro('indenizacao480') : null

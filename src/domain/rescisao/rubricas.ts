@@ -14,10 +14,12 @@ export type CodigoRubrica =
   | 'medias_aviso'
   | 'decimo_proporcional'
   | 'decimo_aviso'
+  | 'medias_decimo'
   | 'ferias_vencidas'
   | 'ferias_dobro'
   | 'ferias_proporcionais'
   | 'ferias_aviso'
+  | 'medias_ferias'
   | 'terco_ferias'
   | 'indenizacao_479'
   | 'indenizacao_7238'
@@ -121,6 +123,15 @@ export const RUBRICAS: readonly DefinicaoRubrica[] = [
     validar: true,
   },
   {
+    codigo: 'medias_decimo',
+    descricao: 'Médias sobre 13º salário',
+    tipo: 'provento',
+    natureza: 'remuneratoria',
+    grupo: 'decimo',
+    padrao: SIM_TODAS,
+    fundamento: 'Reflexo das médias variáveis (horas extras, comissões) no 13º proporcional e no 13º sobre o aviso.',
+  },
+  {
     codigo: 'ferias_vencidas',
     descricao: 'Férias vencidas',
     tipo: 'provento',
@@ -155,6 +166,15 @@ export const RUBRICAS: readonly DefinicaoRubrica[] = [
     grupo: 'mensal',
     padrao: NENHUMA,
     fundamento: 'Avos de férias gerados pela projeção do aviso indenizado.',
+  },
+  {
+    codigo: 'medias_ferias',
+    descricao: 'Médias sobre férias',
+    tipo: 'provento',
+    natureza: 'indenizatoria',
+    grupo: 'mensal',
+    padrao: NENHUMA,
+    fundamento: 'Reflexo das médias variáveis nas férias vencidas, proporcionais e sobre o aviso. Integra a base do 1/3.',
   },
   {
     codigo: 'terco_ferias',

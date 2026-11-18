@@ -28,7 +28,9 @@ function ehParametros(valor: unknown): valor is ParametrosRescisao {
     dados !== null &&
     typeof dados.regras === 'object' &&
     typeof dados.incidencias === 'object' &&
-    RUBRICAS.every((rubrica) => typeof dados.incidencias[rubrica.codigo]?.inss === 'boolean')
+    dados.incidencias !== null &&
+    // Verbas criadas depois (ex.: medias sobre ferias e 13o) podem faltar: normalizar() completa com o padrao.
+    Object.values(dados.incidencias).every((incidencia) => typeof incidencia?.inss === 'boolean')
   )
 }
 

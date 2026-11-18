@@ -95,7 +95,6 @@ const conteudo = ref<HTMLElement | null>(null)
 const IDS_CAMPOS: Record<string, string> = {
   salario: 'resc-salario',
   adicionais: 'resc-adicionais',
-  mediaUnica: 'resc-medias',
   mediasFerias: 'resc-medias-ferias',
   mediasDecimo: 'resc-medias-decimo',
   mediasAviso: 'resc-medias-aviso',

@@ -257,9 +257,21 @@ export function calcularRescisao(
   const remuneracaoAviso = remuneracaoFixa + entrada.mediasAviso
   const composicao = (rotulo: string, total: number, rotuloMedias: string, medias: number) =>
     `${rotulo} ${m(total)} = salário ${m(entrada.salario)} + adicionais ${m(entrada.adicionais)} + ${rotuloMedias} ${m(medias)}`
-  const memoriaFerias = composicao('Remuneração de férias', remuneracaoFerias, 'médias de férias', entrada.mediasFerias)
-  const memoriaDecimo = composicao('Remuneração do 13º', remuneracaoDecimo, 'médias de 13º', entrada.mediasDecimo)
   const memoriaAviso = composicao('Remuneração', remuneracaoAviso, 'médias do aviso', entrada.mediasAviso)
+  const fixa = `(${m(entrada.salario)} + adicionais ${m(entrada.adicionais)})`
+
+  /*
+   * Ferias e 13o: a verba sai em duas linhas, a parte do salario + adicionais e a
+   * das medias ("Medias sobre ferias" / "Medias sobre 13o"), como no holerite.
+   * O total e calculado sobre a remuneracao com medias e a parte fixa sobre o
+   * salario; as medias ficam com a diferenca. Assim os totais e o 1/3 nao mudam.
+   */
+  function separarMedias(calcular: (remuneracao: number) => number, remuneracaoComMedias: number) {
+    const total = calcular(remuneracaoComMedias)
+    const parteFixa = calcular(remuneracaoFixa)
+
+    return { total, parteFixa, medias: total - parteFixa }
+  }
 
   const proventos: Rubrica[] = []
   const descontos: Rubrica[] = []
@@ -393,21 +405,25 @@ export function calcularRescisao(
   let totalDecimo = 0
 
   if (modalidade.decimo > 0) {
-    const real = proporcional(remuneracaoDecimo, avosDecimoReal, 12, modalidade.decimo)
-    const projetado = proporcional(remuneracaoDecimo, avosDecimoProjetado - avosDecimoReal, 12, modalidade.decimo)
+    const avosAviso = avosDecimoProjetado - avosDecimoReal
+    const real = separarMedias((valor) => proporcional(valor, avosDecimoReal, 12, modalidade.decimo), remuneracaoDecimo)
+    const projetado = separarMedias((valor) => proporcional(valor, avosAviso, 12, modalidade.decimo), remuneracaoDecimo)
 
-    totalDecimo = real + projetado
+    totalDecimo = real.total + projetado.total
 
-    lancar('decimo_proporcional', real, `${avosDecimoReal}/12`, [
-      memoriaDecimo,
+    lancar('decimo_proporcional', real.parteFixa, `${avosDecimoReal}/12`, [
       `${avosDecimoReal} avos em ${ano} até ${formatarData(entrada.desligamento)} (meses com 15 dias ou mais)`,
-      `${m(remuneracaoDecimo)} ÷ 12 × ${avosDecimoReal}${textoFator(modalidade.decimo)}`,
+      `${fixa} ÷ 12 × ${avosDecimoReal}${textoFator(modalidade.decimo)}`,
     ])
 
-    lancar('decimo_aviso', projetado, `${avosDecimoProjetado - avosDecimoReal}/12`, [
-      memoriaDecimo,
-      `Avos adicionais pela projeção até ${formatarData(dataProjetada)}: ${avosDecimoProjetado - avosDecimoReal}`,
-      `${m(remuneracaoDecimo)} ÷ 12 × ${avosDecimoProjetado - avosDecimoReal}${textoFator(modalidade.decimo)}`,
+    lancar('decimo_aviso', projetado.parteFixa, `${avosAviso}/12`, [
+      `Avos adicionais pela projeção até ${formatarData(dataProjetada)}: ${avosAviso}`,
+      `${fixa} ÷ 12 × ${avosAviso}${textoFator(modalidade.decimo)}`,
+    ])
+
+    lancar('medias_decimo', real.medias + projetado.medias, `${avosDecimoProjetado}/12`, [
+      `Médias de 13º ${m(entrada.mediasDecimo)} ÷ 12 × ${avosDecimoProjetado} avos${textoFator(modalidade.decimo)}`,
+      `13º proporcional ${m(real.medias)}` + (avosAviso ? ` + sobre o aviso ${m(projetado.medias)}` : ''),
     ])
   }
 
@@ -426,6 +442,8 @@ export function calcularRescisao(
   const periodos = periodosAquisitivos(entrada.admissao, entrada.desligamento)
   const periodosCalculados: PeriodoCalculado[] = []
   let feriasVencidas = 0
+  let vencidasFixa = 0
+  let mediasVencidas = 0
   let feriasDobro = 0
   const memoriaVencidas: string[] = []
   const memoriaDobro: string[] = []
@@ -454,13 +472,16 @@ export function calcularRescisao(
     }
 
     const dias = diasDeFeriasPorFaltas(informado.faltas)
-    const valor = proporcional(remuneracaoFerias, dias, 30)
+    const partes = separarMedias((remuneracao) => proporcional(remuneracao, dias, 30), remuneracaoFerias)
+    const valor = partes.total
     const dobro = regras.feriasEmDobro && periodo.fimConcessivo < entrada.desligamento
     const intervalo = `${formatarData(periodo.inicio)} a ${formatarData(periodo.fim)}`
 
     feriasVencidas += valor
+    vencidasFixa += partes.parteFixa
+    mediasVencidas += partes.medias
     memoriaVencidas.push(
-      `Período ${periodo.numero} (${intervalo}): ${informado.faltas} faltas → ${dias} dias; ${m(remuneracaoFerias)} ÷ 30 × ${dias} = ${m(valor)}`,
+      `Período ${periodo.numero} (${intervalo}): ${informado.faltas} faltas → ${dias} dias; ${fixa} ÷ 30 × ${dias} = ${m(partes.parteFixa)}`,
     )
 
     if (dobro) {
@@ -490,6 +511,8 @@ export function calcularRescisao(
   let avosFeriasProjetado = 0
   let feriasProporcionais = 0
   let feriasAviso = 0
+  let mediasProporcionais = 0
+  let mediasFeriasAviso = 0
 
   if (periodoAtual) {
     avosFeriasReal = avosDoPeriodo(periodoAtual.inicio, entrada.desligamento)
@@ -509,29 +532,45 @@ export function calcularRescisao(
   if (modalidade.feriasProporcionais > 0 && periodoAtual) {
     const fator = modalidade.feriasProporcionais
 
-    feriasProporcionais = proporcional(remuneracaoFerias, diasFeriasDireito * avosFeriasReal, 360, fator)
-    feriasAviso = proporcional(remuneracaoFerias, diasFeriasDireito * (avosFeriasProjetado - avosFeriasReal), 360, fator)
+    const avosAviso = avosFeriasProjetado - avosFeriasReal
+    const proporcionais = separarMedias((valor) => proporcional(valor, diasFeriasDireito * avosFeriasReal, 360, fator), remuneracaoFerias)
+    const sobreAviso = separarMedias((valor) => proporcional(valor, diasFeriasDireito * avosAviso, 360, fator), remuneracaoFerias)
 
-    lancar('ferias_proporcionais', feriasProporcionais, `${avosFeriasReal}/12`, [
-      memoriaFerias,
+    feriasProporcionais = proporcionais.total
+    feriasAviso = sobreAviso.total
+    mediasProporcionais = proporcionais.medias
+    mediasFeriasAviso = sobreAviso.medias
+
+    lancar('ferias_proporcionais', proporcionais.parteFixa, `${avosFeriasReal}/12`, [
       `Período em curso desde ${formatarData(periodoAtual.inicio)}: ${avosFeriasReal} avos até ${formatarData(entrada.desligamento)} (fração de 15 dias conta 1 avo)`,
       `${entrada.faltasPeriodoAtual} faltas no período → direito a ${diasFeriasDireito} dias`,
-      `${m(remuneracaoFerias)} ÷ 30 × ${diasFeriasDireito} ÷ 12 × ${avosFeriasReal}${textoFator(fator)}`,
+      `${fixa} ÷ 30 × ${diasFeriasDireito} ÷ 12 × ${avosFeriasReal}${textoFator(fator)}`,
     ])
 
-    lancar('ferias_aviso', feriasAviso, `${avosFeriasProjetado - avosFeriasReal}/12`, [
-      memoriaFerias,
-      `Avos adicionais pela projeção até ${formatarData(dataProjetada)}: ${avosFeriasProjetado - avosFeriasReal}`,
-      `${m(remuneracaoFerias)} ÷ 30 × ${diasFeriasDireito} ÷ 12 × ${avosFeriasProjetado - avosFeriasReal}${textoFator(fator)}`,
+    lancar('ferias_aviso', sobreAviso.parteFixa, `${avosAviso}/12`, [
+      `Avos adicionais pela projeção até ${formatarData(dataProjetada)}: ${avosAviso}`,
+      `${fixa} ÷ 30 × ${diasFeriasDireito} ÷ 12 × ${avosAviso}${textoFator(fator)}`,
     ])
   }
 
-  lancar('ferias_vencidas', feriasVencidas, `${memoriaVencidas.length} período(s)`, [memoriaFerias, ...memoriaVencidas])
+  lancar('ferias_vencidas', vencidasFixa, `${memoriaVencidas.length} período(s)`, memoriaVencidas)
 
+  const mediasFerias = mediasVencidas + mediasProporcionais + mediasFeriasAviso
+
+  lancar('medias_ferias', mediasFerias, '', [
+    `Médias de férias ${m(entrada.mediasFerias)} por mês, na mesma proporção de cada férias`,
+    [
+      mediasVencidas ? `vencidas ${m(mediasVencidas)}` : '',
+      mediasProporcionais ? `proporcionais ${m(mediasProporcionais)}` : '',
+      mediasFeriasAviso ? `sobre o aviso ${m(mediasFeriasAviso)}` : '',
+    ].filter(Boolean).join(' + '),
+  ])
+
+  // Base do 1/3: todas as ferias, inclusive as medias.
   const baseTerco = feriasVencidas + feriasProporcionais + feriasAviso
 
   lancar('terco_ferias', dividirArredondando(baseTerco, 3), '1/3', [
-    `(vencidas ${m(feriasVencidas)} + proporcionais ${m(feriasProporcionais)} + sobre aviso ${m(feriasAviso)}) ÷ 3`,
+    `(vencidas ${m(vencidasFixa)} + proporcionais ${m(feriasProporcionais - mediasProporcionais)} + sobre aviso ${m(feriasAviso - mediasFeriasAviso)} + médias ${m(mediasFerias)}) ÷ 3`,
   ])
 
   lancar('ferias_dobro', feriasDobro, '', memoriaDobro)
