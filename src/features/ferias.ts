@@ -112,14 +112,16 @@ export function interpretarFerias(formulario: FormularioFerias) {
   } else if (!pagamento) {
     erros.dataPagamento = 'Informe uma data válida.'
   } else if (pagamento.getUTCFullYear() !== ANO_VIGENCIA) {
-    erros.dataPagamento = `O pagamento deve ocorrer em ${ANO_VIGENCIA} para usar a tabela de IRRF vigente.`
+    erros.dataPagamento = `O pagamento deve ser em ${ANO_VIGENCIA} (tabela do IRRF).`
   }
 
   const dias = Number.isInteger(diasFerias) ? (diasFerias as number) : 0
   const fim = inicio && dias > 0 ? somarDias(inicio, dias - 1) : null
 
-  if (inicio && fim && (inicio.getUTCFullYear() !== ANO_VIGENCIA || fim.getUTCFullYear() !== ANO_VIGENCIA)) {
-    erros.dataInicio = `Todo o período de gozo deve estar em ${ANO_VIGENCIA} para usar a tabela de INSS vigente.`
+  // O fim do gozo pode cair no ano seguinte: o INSS e calculado por competencia,
+  // com a tabela de cada ano (provisoria quando ainda nao cadastrada).
+  if (inicio && inicio.getUTCFullYear() !== ANO_VIGENCIA) {
+    erros.dataInicio = `O início do gozo deve ser em ${ANO_VIGENCIA}.`
   }
 
   const abono = Number.isInteger(diasAbono) ? (diasAbono as number) : 0

@@ -3,7 +3,7 @@ import { dividirArredondando } from './dinheiro'
 import { calcularFgts, type ResultadoFgts } from './fgts'
 import { calcularInss, type ResultadoInss } from './inss'
 import { calcularIrrf, type ResultadoIrrf } from './irrf'
-import { IRRF_2026, type TabelaInss, type TabelaIrrf } from './parametros'
+import { tabelasDaCompetencia, type OpcoesTabelas } from './parametros'
 
 /*
  * Ordem do calculo:
@@ -11,8 +11,11 @@ import { IRRF_2026, type TabelaInss, type TabelaIrrf } from './parametros'
  * 2. Soma das medias (valor TOTAL correspondente aos dias gozados).
  * 3. 1/3 sobre salario proporcional + medias.
  * 4. Abono pecuniario isento; o 1/3 sobre o abono integra a base do IRRF.
- * 5. INSS separado por competencia de gozo (sem abono e sem o 1/3 do abono).
- * 6. IRRF exclusivo sobre ferias + 1/3 + 1/3 do abono.
+ * 5. INSS separado por competencia de gozo (sem abono e sem o 1/3 do abono),
+ *    cada competencia com a tabela do seu ano. Sem tabela cadastrada para o ano
+ *    (gozo que vira o ano), usa a mais recente e marca o INSS como provisorio.
+ * 6. IRRF exclusivo sobre ferias + 1/3 + 1/3 do abono, sobre o total, pela
+ *    tabela vigente na data do pagamento.
  */
 
 export interface EntradaFerias {
@@ -33,8 +36,13 @@ export interface CompetenciaFerias {
   salario: number
   medias: number
   terco: number
+  /** Ferias + medias + 1/3 da competencia: valor bruto e base do INSS. */
   base: number
   inss: ResultadoInss
+  /** Ano da tabela de INSS aplicada. */
+  anoTabela: number
+  /** Nao ha tabela do ano da competencia: usada a mais recente (rever quando a oficial sair). */
+  provisoria: boolean
 }
 
 export interface ResultadoFerias {
@@ -57,7 +65,11 @@ export interface ResultadoFerias {
   inssEstimado: number
   inssUsado: number
   usouInssManual: boolean
+  /** Alguma competencia usou tabela de outro ano por falta da tabela do ano dela. */
+  inssProvisorio: boolean
   irrf: ResultadoIrrf
+  /** Ano da tabela de IRRF aplicada (vigente na data do pagamento). */
+  anoTabelaIrrf: number
   totalDescontos: number
   liquido: number
   /** Sobre ferias + 1/3; o abono pecuniario e o 1/3 do abono nao tem FGTS. */
@@ -108,11 +120,11 @@ export function ratearPorPesos(total: number, pesos: number[]): number[] {
   return itens.map((item) => item.valor)
 }
 
-export function calcularFerias(
-  entrada: EntradaFerias,
-  tabela: TabelaInss,
-  tabelaIrrf: Readonly<TabelaIrrf> = IRRF_2026,
-): ResultadoFerias {
+/**
+ * tabelas: versoes cadastradas e as tabelas editadas em Parametros (que valem
+ * para a versao mais recente). Sem opcoes, usa as tabelas oficiais.
+ */
+export function calcularFerias(entrada: EntradaFerias, tabelas: OpcoesTabelas = {}): ResultadoFerias {
   const salarioFerias = dividirArredondando(entrada.salario * entrada.diasFerias, 30)
   const mediasFerias = entrada.medias
   const ferias = salarioFerias + mediasFerias
@@ -145,6 +157,7 @@ export function calcularFerias(
     const mediasCompetencia = medias[indice] ?? 0
     const tercoCompetencia = tercos[indice] ?? 0
     const base = salario + mediasCompetencia + tercoCompetencia
+    const vigentes = tabelasDaCompetencia(periodo.chave, tabelas)
 
     return {
       ...periodo,
@@ -152,18 +165,23 @@ export function calcularFerias(
       medias: mediasCompetencia,
       terco: tercoCompetencia,
       base,
-      inss: calcularInss(base, tabela),
+      inss: calcularInss(base, vigentes.inss),
+      anoTabela: vigentes.ano,
+      provisoria: vigentes.provisoria,
     }
   })
 
   const inssEstimado = competencias.reduce((soma, item) => soma + item.inss.total, 0)
   const inssUsado = entrada.inssManual ?? inssEstimado
 
+  // IRRF sobre o total (nao por competencia), pela tabela da data do pagamento.
+  const tabelasPagamento = tabelasDaCompetencia(chaveMes(entrada.pagamento), tabelas)
+
   const irrf = calcularIrrf({
     rendimento: rendimentoIrrf,
     inss: inssUsado,
     dependentes: entrada.dependentes,
-  }, { tabela: tabelaIrrf })
+  }, { tabela: tabelasPagamento.irrf })
 
   const totalDescontos = inssUsado + irrf.escolhida.irrf
 
@@ -185,9 +203,42 @@ export function calcularFerias(
     inssEstimado,
     inssUsado,
     usouInssManual: entrada.inssManual !== null,
+    inssProvisorio: competencias.some((item) => item.provisoria),
     irrf,
+    anoTabelaIrrf: tabelasPagamento.ano,
     totalDescontos,
     liquido: Math.max(0, totalBruto - totalDescontos),
     fgts: calcularFgts(tributavel),
   }
+}
+
+/**
+ * Aviso quando o gozo vira o ano, ex.:
+ * "5 dias caem em 2027. INSS calculado com a tabela de 2026 (provisório)."
+ * null quando todo o gozo fica no ano do inicio.
+ */
+export function avisoViradaDeAno(resultado: ResultadoFerias): string | null {
+  const anoInicio = resultado.entrada.inicio.getUTCFullYear()
+  const porAno = new Map<number, CompetenciaFerias[]>()
+
+  for (const competencia of resultado.competencias) {
+    const ano = Number(competencia.chave.slice(0, 4))
+
+    if (ano !== anoInicio) porAno.set(ano, [...(porAno.get(ano) ?? []), competencia])
+  }
+
+  if (!porAno.size) return null
+
+  return [...porAno]
+    .map(([ano, lista]) => {
+      const dias = lista.reduce((soma, item) => soma + item.dias, 0)
+      const anosTabela = [...new Set(lista.map((item) => item.anoTabela))].join(' e ')
+      const provisorio = lista.some((item) => item.provisoria)
+
+      return (
+        `${dias} ${dias === 1 ? 'dia cai' : 'dias caem'} em ${ano}. ` +
+        `INSS calculado com a tabela de ${anosTabela}${provisorio ? ' (provisório)' : ''}.`
+      )
+    })
+    .join(' ')
 }

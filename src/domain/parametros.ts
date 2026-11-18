@@ -113,12 +113,63 @@ export const VERSOES_TABELAS: readonly VersaoTabelas[] = [
   { vigencia: '2026-01', rotulo: `Tabelas ${ANO_VIGENCIA}`, inss: TABELA_INSS_2026, irrf: IRRF_2026 },
 ]
 
-export function versaoDaCompetencia(competencia: string): VersaoTabelas | null {
+export function versaoDaCompetencia(
+  competencia: string,
+  versoes: readonly VersaoTabelas[] = VERSOES_TABELAS,
+): VersaoTabelas | null {
   return (
-    [...VERSOES_TABELAS]
+    [...versoes]
       .sort((a, b) => b.vigencia.localeCompare(a.vigencia))
       .find((versao) => versao.vigencia <= competencia) ?? null
   )
+}
+
+export interface OpcoesTabelas {
+  /** Versoes cadastradas; padrao: VERSOES_TABELAS. */
+  versoes?: readonly VersaoTabelas[]
+  /** Tabelas editadas em Parametros: substituem as da versao mais recente cadastrada. */
+  inss?: Readonly<TabelaInss>
+  irrf?: Readonly<TabelaIrrf>
+}
+
+export interface TabelasDaCompetencia {
+  versao: VersaoTabelas
+  /** Ano de vigencia da versao aplicada. */
+  ano: number
+  inss: Readonly<TabelaInss>
+  irrf: Readonly<TabelaIrrf>
+  /**
+   * Nao ha tabela cadastrada para o ano da competencia: foi usada a mais recente
+   * disponivel, e o valor deve ser revisto quando a tabela oficial sair.
+   */
+  provisoria: boolean
+}
+
+function anoDe(chave: string): number {
+  return Number(chave.slice(0, 4))
+}
+
+/** Tabelas que valem para a competencia "AAAA-MM", com as personalizacoes de Parametros. */
+export function tabelasDaCompetencia(competencia: string, opcoes: OpcoesTabelas = {}): TabelasDaCompetencia {
+  const versoes = [...(opcoes.versoes ?? VERSOES_TABELAS)].sort((a, b) => a.vigencia.localeCompare(b.vigencia))
+  const maisRecente = versoes.at(-1)
+  // Competencia anterior a primeira versao: usa a primeira (e fica provisoria).
+  const versao = versaoDaCompetencia(competencia, versoes) ?? versoes[0]
+
+  if (!versao || !maisRecente) {
+    throw new Error('Nenhuma tabela de INSS e IRRF cadastrada.')
+  }
+
+  const editavel = versao.vigencia === maisRecente.vigencia
+  const ano = anoDe(competencia)
+
+  return {
+    versao,
+    ano: anoDe(versao.vigencia),
+    inss: editavel && opcoes.inss ? opcoes.inss : versao.inss,
+    irrf: editavel && opcoes.irrf ? opcoes.irrf : versao.irrf,
+    provisoria: !versoes.some((candidata) => anoDe(candidata.vigencia) === ano),
+  }
 }
 
 export const FONTES_OFICIAIS = [

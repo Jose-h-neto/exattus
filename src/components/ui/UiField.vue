@@ -40,7 +40,7 @@ const descricao = computed(() => (props.erro ? `${props.id}-erro` : undefined))
     <slot :id="id" :descricao="descricao" :invalido="Boolean(erro)" />
 
     <p v-if="erro" :id="`${id}-erro`" class="ex-error campo-mensagem" :title="erro">
-      <UiIcon nome="alerta" :tamanho="14" /><span class="min-w-0 truncate">{{ erro }}</span>
+      <UiIcon nome="alerta" :tamanho="14" /><span class="campo-mensagem__texto">{{ erro }}</span>
     </p>
     <span v-else class="campo-mensagem" aria-hidden="true" />
   </div>

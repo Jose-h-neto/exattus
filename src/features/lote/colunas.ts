@@ -83,7 +83,7 @@ export const COLUNAS_FERIAS: ColunaLote[] = [
   { campo: 'diasFerias', cabecalho: 'Dias de férias', grupo: 'calc', tipo: 'inteiro', minimo: 1, maximo: 30, largura: 11, nota: 'De 1 a 30. Em branco = 30. Férias + abono não pode passar de 30.', exemplo: '20' },
   { campo: 'diasAbono', cabecalho: 'Dias de abono', grupo: 'calc', tipo: 'inteiro', minimo: 0, maximo: 10, largura: 11, nota: 'Dias vendidos (abono pecuniário), de 0 a 10. Em branco = sem abono.', exemplo: '10' },
   { campo: 'dependentes', cabecalho: 'Dependentes IRRF', grupo: 'calc', tipo: 'inteiro', minimo: 0, maximo: 99, largura: 12, nota: 'Número de dependentes para o IRRF. Em branco = 0.', exemplo: '0' },
-  { campo: 'dataInicio', cabecalho: 'Início do gozo', grupo: 'calc', tipo: 'data', obrigatorio: true, largura: 13, nota: 'Obrigatório. Primeiro dia de férias. Todo o período precisa estar em 2026.', exemplo: '06/07/2026' },
+  { campo: 'dataInicio', cabecalho: 'Início do gozo', grupo: 'calc', tipo: 'data', obrigatorio: true, largura: 13, nota: 'Obrigatório. Primeiro dia de férias, em 2026. Se o gozo passar para 2027, o INSS é calculado por competência (provisório sem a tabela do ano).', exemplo: '06/07/2026' },
   { campo: 'dataPagamento', cabecalho: 'Data de pagamento', grupo: 'calc', tipo: 'data', largura: 13, nota: 'Em branco = 2 dias antes do início do gozo.' },
   { campo: 'inssManual', cabecalho: 'INSS manual (R$)', grupo: 'calc', tipo: 'moeda', largura: 14, nota: 'Só preencha para substituir o INSS que o sistema estima.' },
   ...conferir('Total bruto'),

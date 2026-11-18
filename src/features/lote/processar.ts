@@ -369,7 +369,7 @@ function processarFerias(registro: RegistroPlanilha, tolerancia: number, tabelas
   erros.push(...errosDoFormulario(leitura.erros, ROTULOS_FERIAS))
 
   const informados = lerInformados(registro, erros)
-  const resultado = leitura.entrada ? calcularFerias(leitura.entrada, tabelas.inss, tabelas.irrf) : null
+  const resultado = leitura.entrada ? calcularFerias(leitura.entrada, { inss: tabelas.inss, irrf: tabelas.irrf }) : null
 
   const itens = resultado
     ? itensConferidos(
@@ -389,7 +389,8 @@ function processarFerias(registro: RegistroPlanilha, tolerancia: number, tabelas
 
   const detalhe = resultado
     ? `${formatarData(resultado.entrada.inicio)} a ${formatarData(resultado.entrada.fim)} · ${resultado.entrada.diasFerias} dias` +
-      (resultado.entrada.diasAbono ? ` + ${resultado.entrada.diasAbono} vendidos` : '')
+      (resultado.entrada.diasAbono ? ` + ${resultado.entrada.diasAbono} vendidos` : '') +
+      (resultado.inssProvisorio ? ' · INSS provisório (gozo vira o ano)' : '')
     : 'Férias'
 
   return montarLinha(registro, dados, { ...form }, erros, itens, detalhe)

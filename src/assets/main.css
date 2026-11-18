@@ -167,13 +167,32 @@
   align-self: stretch;
 }
 
-/* Uma linha fixa: mensagem longa e abreviada (texto completo no title e para leitores de tela). */
+/*
+ * Uma linha reservada (alinha os campos vazios); mensagem longa quebra em ate
+ * 2 linhas e so a partir dai e abreviada (texto completo no title).
+ */
 .campo-mensagem {
   display: flex;
+  align-items: flex-start;
   min-width: 0;
-  height: 16px;
+  min-height: 16px;
+  max-height: 32px;
   overflow: hidden;
-  white-space: nowrap;
+}
+
+.campo-mensagem > svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.campo-mensagem__texto {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }
 
 /* Switch na mesma linha de campos: centralizado na altura do controle. */

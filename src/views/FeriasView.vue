@@ -9,6 +9,7 @@ import MemoriaInss from '@/components/calculo/MemoriaInss.vue'
 import MemoriaIrrf from '@/components/calculo/MemoriaIrrf.vue'
 import ResumoValores from '@/components/calculo/ResumoValores.vue'
 import UiAlert from '@/components/ui/UiAlert.vue'
+import UiBadge from '@/components/ui/UiBadge.vue'
 import UiButton from '@/components/ui/UiButton.vue'
 import UiEmptyState from '@/components/ui/UiEmptyState.vue'
 import UiField from '@/components/ui/UiField.vue'
@@ -17,13 +18,14 @@ import UiIcon from '@/components/ui/UiIcon.vue'
 import UiDateInput from '@/components/ui/UiDateInput.vue'
 import UiInfo from '@/components/ui/UiInfo.vue'
 import UiInput from '@/components/ui/UiInput.vue'
+import UiModal from '@/components/ui/UiModal.vue'
 import UiMoneyInput from '@/components/ui/UiMoneyInput.vue'
 import UiSwitch from '@/components/ui/UiSwitch.vue'
 import UiTabs from '@/components/ui/UiTabs.vue'
 
 import { formatarData, lerData, nomeCompetencia } from '@/domain/datas'
 import { formatarMoeda, formatarPercentual } from '@/domain/dinheiro'
-import { calcularFerias, separarCompetencias } from '@/domain/ferias'
+import { avisoViradaDeAno, calcularFerias, separarCompetencias } from '@/domain/ferias'
 import { encargoFgts } from '@/domain/fgts'
 import { ANO_VIGENCIA } from '@/domain/parametros'
 import {
@@ -50,8 +52,28 @@ const leitura = computed(() => interpretarFerias(form))
 const erros = computed(() => leitura.value.erros)
 
 const resultado = computed(() =>
-  leitura.value.entrada ? calcularFerias(leitura.value.entrada, tabelaInss.value, tabelaIrrf.value) : null,
+  leitura.value.entrada ? calcularFerias(leitura.value.entrada, { inss: tabelaInss.value, irrf: tabelaIrrf.value }) : null,
 )
+
+/** Gozo que vira o ano: dias no ano seguinte e tabela de INSS usada (provisória ou não). */
+const aviso = computed(() => (resultado.value ? avisoViradaDeAno(resultado.value) : null))
+
+/* Popup explicando o INSS provisório: abre uma vez por ano sem tabela; reabre pelo "Por quê?" do aviso. */
+const competenciaProvisoria = computed(() => {
+  const item = resultado.value?.competencias.find((competencia) => competencia.provisoria)
+
+  return item ? { ano: Number(item.chave.slice(0, 4)), anoTabela: item.anoTabela } : null
+})
+
+const popupProvisorio = ref(false)
+const anoJaAvisado = ref<number | null>(null)
+
+watch(competenciaProvisoria, (provisoria) => {
+  if (provisoria && provisoria.ano !== anoJaAvisado.value) {
+    anoJaAvisado.value = provisoria.ano
+    popupProvisorio.value = true
+  }
+}, { immediate: true })
 
 const textoPeriodo = computed(() => {
   const { fim } = leitura.value
@@ -293,7 +315,10 @@ watch(
         </UiField>
       </UiFormGroup>
 
-      <UiFormGroup titulo="Período" :descricao="`Gozo e pagamento devem ocorrer em ${ANO_VIGENCIA}, ano das tabelas vigentes.`">
+      <UiFormGroup
+        titulo="Período"
+        :descricao="`Início do gozo e pagamento em ${ANO_VIGENCIA}. Se o gozo passar para o ano seguinte, o INSS é calculado por competência, com a tabela de cada ano.`"
+      >
         <UiField id="ferias-dias" rotulo="Dias de gozo" :erro="erros.diasFerias">
           <template #default="{ id, descricao, invalido }">
             <UiInput :id="id" v-model="form.diasFerias" type="number" min="1" max="30" step="1" sufixo="dias" :invalido="invalido" :aria-describedby="descricao" />
@@ -412,10 +437,67 @@ watch(
           ]"
         />
 
+        <UiAlert v-if="aviso" tom="atencao">
+          {{ aviso }}
+          <button
+            v-if="competenciaProvisoria"
+            type="button"
+            class="ml-1 font-semibold underline underline-offset-2 hover:no-underline focus-visible:outline-2 focus-visible:outline-primary"
+            @click="popupProvisorio = true"
+          >
+            Por quê?
+          </button>
+        </UiAlert>
+
         <UiAlert v-if="resultado.usouInssManual" tom="info">
           INSS calculado pelas competências: {{ formatarMoeda(resultado.inssEstimado) }}. No recibo foi usado o valor
           informado de {{ formatarMoeda(resultado.inssUsado) }}.
         </UiAlert>
+
+        <!-- Uma linha por competencia do gozo: dias, valor bruto (ferias + 1/3) e INSS com a tabela do ano. -->
+        <section class="vidro overflow-hidden rounded-lg" aria-labelledby="titulo-por-competencia">
+          <header class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-line px-5 py-3">
+            <h2 id="titulo-por-competencia" class="text-base font-bold text-ink">Por competência</h2>
+            <p class="text-xs text-muted">Férias + 1/3 rateados pelos dias de gozo de cada mês</p>
+          </header>
+          <div class="overflow-x-auto">
+            <table class="tabela min-w-[480px]">
+              <thead>
+                <tr>
+                  <th scope="col" class="pl-5">Competência</th>
+                  <th scope="col" class="num">Dias</th>
+                  <th scope="col" class="num">Valor bruto</th>
+                  <th scope="col" class="num">INSS</th>
+                  <th scope="col" class="pr-5">Tabela do INSS</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="item in resultado.competencias" :key="item.chave">
+                  <td class="pl-5 font-medium whitespace-nowrap text-ink">{{ nomeCompetencia(item.chave) }}</td>
+                  <td class="num">{{ item.dias }}</td>
+                  <td class="num">{{ formatarMoeda(item.base) }}</td>
+                  <td class="num">{{ formatarMoeda(item.inss.total) }}</td>
+                  <td class="pr-5 whitespace-nowrap">
+                    {{ item.anoTabela }}
+                    <UiBadge v-if="item.provisoria" tom="atencao" class="ml-1">provisória</UiBadge>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th scope="row" class="pl-5 text-left">Total</th>
+                  <td class="num">{{ totaisCompetencias.dias }}</td>
+                  <td class="num">{{ formatarMoeda(totaisCompetencias.base) }}</td>
+                  <td class="num">{{ formatarMoeda(resultado.inssEstimado) }}</td>
+                  <td class="pr-5" />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <p v-if="resultado.totalAbono > 0" class="border-t border-line px-5 py-2.5 text-xs text-muted">
+            Abono pecuniário + 1/3 ({{ formatarMoeda(resultado.totalAbono) }}) fica fora do INSS e desta divisão.
+          </p>
+        </section>
 
         <Demonstrativo
           :linhas="linhas"
@@ -457,7 +539,12 @@ watch(
                     </thead>
                     <tbody>
                       <tr v-for="item in resultado.competencias" :key="item.chave">
-                        <td class="font-medium whitespace-nowrap text-ink">{{ nomeCompetencia(item.chave) }}</td>
+                        <td class="font-medium whitespace-nowrap text-ink">
+                          {{ nomeCompetencia(item.chave) }}
+                          <UiBadge v-if="item.provisoria" tom="atencao" class="ml-1" :title="`Tabela de ${item.anoTabela} usada por falta da tabela do ano`">
+                            provisória
+                          </UiBadge>
+                        </td>
                         <td class="num">{{ item.dias }}</td>
                         <td class="num">{{ formatarMoeda(item.salario) }}</td>
                         <td class="num">{{ formatarMoeda(item.medias) }}</td>
@@ -522,4 +609,20 @@ watch(
   </div>
 
   <BarraResultadoMovel v-if="resultado" alvo="resultado" :liquido="resultado.liquido" />
+
+  <UiModal
+    v-if="competenciaProvisoria"
+    :aberto="popupProvisorio"
+    icone="info"
+    :titulo="`Tabela do INSS de ${competenciaProvisoria.ano} ainda não publicada`"
+    :descricao="
+      `Ela sai por portaria dos Ministérios da Previdência e da Fazenda, em geral na 2ª semana de janeiro, após o INPC do ano anterior. ` +
+      `Até lá, os dias de ${competenciaProvisoria.ano} usam a tabela de ${competenciaProvisoria.anoTabela} e o INSS fica provisório.`
+    "
+    @fechar="popupProvisorio = false"
+  >
+    <template #acoes>
+      <UiButton variante="primario" data-foco-inicial @click="popupProvisorio = false">Entendi</UiButton>
+    </template>
+  </UiModal>
 </template>
