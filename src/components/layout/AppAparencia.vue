@@ -55,7 +55,7 @@ const modos: { valor: Tema; rotulo: string; icone: NomeIcone }[] = [
   { valor: 'dark', rotulo: 'Escuro', icone: 'lua' },
 ]
 
-/** Nome da paleta: na dica do botao do rodape e ao lado do titulo "Cor" no painel. */
+/** Nome da paleta, na dica do botao do rodape (no painel, a bolinha marcada ja diz qual e). */
 const nomePaleta = computed(() => paletas.find((item) => item.id === paleta.value)?.label ?? '')
 
 const aberto = ref(false)
@@ -173,9 +173,8 @@ onBeforeUnmount(() => fechar(false))
 
         <UiSegmented v-model="modoTema" nome="aparencia-modo" rotulo="Modo" :opcoes="modos" />
 
-        <div class="mb-2 flex items-baseline justify-between gap-2">
+        <div class="mb-2">
           <span class="ex-label">Cor</span>
-          <span class="text-xs text-muted">{{ nomePaleta }}</span>
         </div>
         <ExThemePicker v-model="paleta" label="Cor" compact />
 

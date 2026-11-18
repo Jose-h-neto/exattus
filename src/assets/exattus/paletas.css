@@ -118,7 +118,7 @@ html[data-palette="grafite"][data-theme="dark"] {
  * Variante em bolinhas (painel de Aparencia): uma linha de cores, sem miniaturas.
  * A Personalizada e um anel de arco-iris com a cor escolhida no meio.
  */
-.ex-swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+.ex-swatches { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
 .ex-swatch {
   position: relative; display: grid; place-items: center; width: 34px; height: 34px; box-sizing: border-box;
   border-radius: var(--radius-full); background: var(--p); cursor: pointer; outline: none;
