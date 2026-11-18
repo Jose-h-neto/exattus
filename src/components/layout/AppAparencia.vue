@@ -15,7 +15,20 @@ import { useTema, type Tema } from '@/stores/tema'
  */
 const emit = defineEmits<{ aberto: [valor: boolean] }>()
 
-const { paleta, paletas } = usePaleta()
+const { paleta, paletas, cor, ajustada, escolherCor } = usePaleta()
+
+/* Hex digitado: aplica ao confirmar (Enter ou sair do campo); acompanha o seletor nativo. */
+const hexDigitado = ref(cor.value)
+const hexInvalido = ref(false)
+
+watch(cor, (valor) => {
+  hexDigitado.value = valor
+  hexInvalido.value = false
+})
+
+function aplicarHex() {
+  hexInvalido.value = !escolherCor(hexDigitado.value)
+}
 const { tema, definir } = useTema()
 
 const modoTema = computed({ get: () => tema.value, set: definir })
@@ -25,6 +38,7 @@ const modos: { valor: Tema; rotulo: string; icone: NomeIcone }[] = [
   { valor: 'dark', rotulo: 'Escuro', icone: 'lua' },
 ]
 
+/** Nome da paleta na dica do botao do rodape (a bolinha ao lado ja mostra a cor). */
 const nomePaleta = computed(() => paletas.find((item) => item.id === paleta.value)?.label ?? '')
 
 const aberto = ref(false)
@@ -106,12 +120,13 @@ onBeforeUnmount(() => fechar(false))
     type="button"
     class="ex-nav-item"
     aria-haspopup="dialog"
+    :title="`Aparência · ${nomePaleta}`"
     :aria-expanded="aberto"
     @click="aberto ? fechar() : abrir()"
   >
     <UiIcon nome="paleta" :tamanho="20" />
-    <span class="ex-nav-item__label">Aparência</span>
-    <span class="text-xs font-medium text-ink-subtle">{{ nomePaleta }}</span>
+    <span class="ex-nav-item__label min-w-0 truncate">Aparência</span>
+    <span class="ex-sr">: {{ nomePaleta }}</span>
     <span class="size-3 shrink-0 rounded-full bg-primary ring-2 ring-primary-soft" aria-hidden="true" />
   </button>
 
@@ -149,6 +164,47 @@ onBeforeUnmount(() => fechar(false))
           />
         </div>
         <ExThemePicker v-model="paleta" label="Cor de destaque" compact />
+
+        <!-- Cor personalizada: seletor nativo + hex digitado. Escolher ja seleciona a paleta Personalizada. -->
+        <div class="mt-3 border-t border-line pt-3">
+          <label for="aparencia-cor-hex" class="ex-label">Cor personalizada</label>
+          <div class="mt-1.5 flex items-center gap-2">
+            <label
+              class="relative size-9 shrink-0 cursor-pointer overflow-hidden rounded-md border border-line-strong focus-within:ring-3 focus-within:ring-primary-soft"
+              :style="{ background: cor }"
+              title="Escolher a cor"
+            >
+              <input
+                type="color"
+                class="absolute inset-0 size-full cursor-pointer opacity-0"
+                :value="cor"
+                aria-label="Escolher a cor personalizada"
+                @input="escolherCor(($event.target as HTMLInputElement).value)"
+              />
+            </label>
+            <input
+              id="aparencia-cor-hex"
+              v-model="hexDigitado"
+              type="text"
+              inputmode="text"
+              maxlength="7"
+              spellcheck="false"
+              autocomplete="off"
+              placeholder="#5a3fc0"
+              class="h-9 min-w-0 flex-1 rounded-md border bg-surface px-3 font-mono text-sm uppercase outline-none focus:border-primary focus:ring-3 focus:ring-primary-soft"
+              :class="hexInvalido ? 'border-danger' : 'border-line-strong'"
+              :aria-invalid="hexInvalido"
+              aria-describedby="aparencia-cor-nota"
+              @change="aplicarHex"
+              @keydown.enter.prevent="aplicarHex"
+            />
+          </div>
+          <p id="aparencia-cor-nota" class="mt-1.5 text-xs" :class="hexInvalido ? 'text-danger' : 'text-muted'">
+            <template v-if="hexInvalido">Use o formato #RRGGBB, ex.: #0B6A80.</template>
+            <template v-else-if="paleta === 'personalizada' && ajustada">Tom ajustado para manter a leitura dos textos e botões.</template>
+            <template v-else>Os tons claros, o modo escuro e o fundo são gerados a partir dela.</template>
+          </p>
+        </div>
       </div>
     </Transition>
   </Teleport>

@@ -15,7 +15,15 @@
         var tema = salvo === 'dark' || salvo === 'light' ? salvo : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
         document.documentElement.dataset.theme = tema
         var paleta = JSON.parse(localStorage.getItem('exattus:paleta'))
-        if (['violeta', 'azul', 'rosa', 'petroleo', 'grafite'].indexOf(paleta) >= 0) document.documentElement.dataset.palette = paleta
+        if (['violeta', 'azul', 'rosa', 'petroleo', 'grafite', 'personalizada'].indexOf(paleta) >= 0) document.documentElement.dataset.palette = paleta
+        // Paleta personalizada: regras geradas pelo app (stores/paleta.ts), reaplicadas aqui.
+        var css = JSON.parse(localStorage.getItem('exattus:paleta-css'))
+        if (typeof css === 'string') {
+          var estilo = document.createElement('style')
+          estilo.id = 'exattus-paleta-personalizada'
+          estilo.textContent = css
+          document.head.appendChild(estilo)
+        }
       } catch (erro) {}
     </script>
     <title>Exattus</title>
