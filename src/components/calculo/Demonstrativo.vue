@@ -118,15 +118,16 @@ defineProps<{
       </div>
     </dl>
 
-    <dl v-if="encargos?.length" class="divide-y divide-line border-t border-line text-[13px]">
-      <div v-for="encargo in encargos" :key="encargo.rotulo" class="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-5 py-2.5">
+    <!-- Encargos do empregador: faixa propria, com o mesmo peso das linhas do demonstrativo. -->
+    <dl v-if="encargos?.length" class="divide-y divide-line border-t border-line bg-info-soft/60">
+      <div v-for="encargo in encargos" :key="encargo.rotulo" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3">
         <dt class="min-w-0">
-          <span class="font-medium text-ink">{{ encargo.rotulo }}</span>
-          <span class="ml-2 text-xs text-muted">Depósito do empregador · não desconta do líquido</span>
+          <span class="block text-sm font-semibold text-ink">{{ encargo.rotulo }}</span>
+          <span class="mt-0.5 block text-xs text-ink-2">Depósito do empregador · não desconta do líquido</span>
         </dt>
-        <dd class="num">
-          <span v-if="encargo.detalhe" class="mr-2 text-xs text-muted">{{ encargo.detalhe }}</span>
-          <span class="font-semibold text-ink">{{ formatarMoeda(encargo.valor) }}</span>
+        <dd class="num text-right">
+          <span class="block text-base font-semibold text-ink">{{ formatarMoeda(encargo.valor) }}</span>
+          <span v-if="encargo.detalhe" class="mt-0.5 block text-xs text-ink-2">{{ encargo.detalhe }}</span>
         </dd>
       </div>
     </dl>

@@ -331,9 +331,9 @@ watch(
           v-if="resultado.entrada.parcela === 'primeira'"
           :itens="[
             { rotulo: '13º integral', valor: resultado.integral },
-            { rotulo: '1ª parcela (50%)', valor: resultado.primeiraParcela },
-            { rotulo: 'FGTS (empregador)', valor: resultado.fgts.valor },
+            { rotulo: '1ª parcela (50%)', valor: resultado.primeiraParcela, nota: 'Sem INSS e IRRF' },
             { rotulo: 'Valor líquido', valor: resultado.liquido, destaque: true },
+            { rotulo: 'FGTS (8%)', valor: resultado.fgts.valor, nota: 'Depósito do empregador · não desconta do líquido' },
           ]"
         />
         <ResumoValores
@@ -343,6 +343,7 @@ watch(
             { rotulo: 'INSS + IRRF', valor: (resultado.inss?.total ?? 0) + (resultado.irrf?.escolhida.irrf ?? 0), sinal: '-' },
             { rotulo: '1ª parcela paga', valor: resultado.adiantamento, sinal: '-' },
             { rotulo: 'Líquido da 2ª parcela', valor: resultado.liquido, destaque: true },
+            { rotulo: 'FGTS (8%)', valor: resultado.fgts.valor, nota: 'Depósito do empregador · não desconta do líquido' },
           ]"
         />
 

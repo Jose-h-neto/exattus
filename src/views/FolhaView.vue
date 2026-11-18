@@ -520,6 +520,7 @@ watch(
             { rotulo: 'INSS', valor: resultado.inss.total, sinal: '-' },
             { rotulo: 'IRRF', valor: resultado.irrf.escolhida.irrf, sinal: '-' },
             { rotulo: 'Valor líquido', valor: resultado.liquido, destaque: true },
+            ...(resultado.fgts ? [{ rotulo: 'FGTS (8%)', valor: resultado.fgts.valor, nota: 'Depósito do empregador · não desconta do líquido' }] : []),
           ]"
         />
 
