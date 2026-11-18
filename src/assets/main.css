@@ -346,3 +346,40 @@
 .ex-field {
   gap: 4px;
 }
+
+/*
+ * Barras de rolagem finas e na cor do tema (pagina, sidebar, tabelas, paineis).
+ * Chrome/Edge/Safari: ::-webkit-scrollbar (fina, arredondada, sem setas, mais
+ * forte ao passar o mouse). Firefox, que nao tem esse seletor: propriedades padrao.
+ */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--radius-full);
+  background: color-mix(in srgb, var(--primary) 40%, transparent) padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  border-width: 2px;
+  background-color: color-mix(in srgb, var(--primary) 70%, transparent);
+}
+
+::-webkit-scrollbar-button {
+  display: none;
+}
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in srgb, var(--primary) 45%, transparent) transparent;
+  }
+}
