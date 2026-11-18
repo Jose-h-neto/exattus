@@ -383,3 +383,10 @@
     scrollbar-color: color-mix(in srgb, var(--primary) 45%, transparent) transparent;
   }
 }
+
+/* Gaveta do menu aberta (celular): o fundo nao rola, so o menu (AppShell). */
+html.rolagem-travada,
+html.rolagem-travada body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}

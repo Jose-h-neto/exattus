@@ -94,10 +94,19 @@ onMounted(() => {
   window.addEventListener('keydown', aoTeclar)
 })
 
+/*
+ * Gaveta aberta (telas estreitas): o fundo nao rola, so o menu. A classe trava a
+ * rolagem do documento; sai ao fechar (toque fora, Esc, troca de rota ou tela larga).
+ */
+const travarRolagem = computed(() => modo.value === 'gaveta' && gavetaAberta.value)
+
+watch(travarRolagem, (travar) => document.documentElement.classList.toggle('rolagem-travada', travar), { immediate: true })
+
 onBeforeUnmount(() => {
   consulta?.removeEventListener('change', atualizarTela)
   window.removeEventListener('keydown', aoTeclar)
   window.clearTimeout(temporizador)
+  document.documentElement.classList.remove('rolagem-travada')
 })
 
 watch(

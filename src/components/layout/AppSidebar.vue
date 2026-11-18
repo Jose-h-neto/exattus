@@ -132,7 +132,8 @@ function folhaHoraAula() {
       </button>
     </div>
 
-    <div class="-mx-1 flex-1 overflow-y-auto px-1">
+    <!-- overscroll-contain: ao chegar no fim da lista, a rolagem nao passa para a pagina. -->
+    <div class="-mx-1 flex-1 overflow-y-auto overscroll-contain px-1">
       <section
         v-for="grupo in NAVEGACAO"
         :key="grupo.titulo"
