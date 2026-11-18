@@ -33,7 +33,7 @@ const etapaAtiva = computed(() => props.etapas[indiceAtivo.value])
           v-for="(etapa, indice) in etapas"
           :key="etapa.id"
           class="h-1.5 w-5 rounded-full"
-          :class="indice <= indiceAtivo ? 'bg-primary' : 'bg-line-strong'"
+          :class="indice <= indiceAtivo ? 'bg-primary-fill' : 'bg-line-strong'"
         />
       </div>
     </div>
@@ -51,7 +51,7 @@ const etapaAtiva = computed(() => props.etapas[indiceAtivo.value])
             class="grid size-6 shrink-0 place-items-center rounded-full text-xs font-semibold ring-1 transition-colors"
             :class="[
               etapa.id === ativa
-                ? 'bg-primary text-on-primary ring-primary'
+                ? 'bg-primary-fill text-on-primary ring-primary'
                 : etapa.estado === 'erro'
                   ? 'bg-negative-soft text-negative ring-danger/30'
                   : etapa.estado === 'concluida'

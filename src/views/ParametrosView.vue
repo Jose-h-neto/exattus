@@ -293,7 +293,15 @@ const reducao = REDUCAO_2026
         </template>
 
         <div class="overflow-x-auto">
-          <table class="tabela min-w-[720px]">
+          <!-- table-fixed: os campos se ajustam as colunas (sem rolagem lateral no notebook). -->
+          <table class="tabela min-w-[560px] table-fixed">
+            <colgroup>
+              <col class="w-[11%]" />
+              <col class="w-[23%]" />
+              <col class="w-[17%]" />
+              <col class="w-[23%]" />
+              <col class="w-[26%]" />
+            </colgroup>
             <thead>
               <tr>
                 <th scope="col" class="pl-5">Faixa</th>
@@ -301,8 +309,8 @@ const reducao = REDUCAO_2026
                 <th scope="col">Alíquota</th>
                 <th scope="col">
                   <span class="inline-flex items-center gap-1.5">
-                    Valor fixo da faixa completa
-                    <UiInfo texto="Usado quando a base ultrapassa a faixa inteira. Deixe em branco para calcular pela alíquota." />
+                    Valor fixo
+                    <UiInfo texto="Valor fixo da faixa completa: usado quando a base ultrapassa a faixa inteira. Deixe em branco para calcular pela alíquota." />
                   </span>
                 </th>
                 <th scope="col" class="num pr-5">
@@ -318,14 +326,14 @@ const reducao = REDUCAO_2026
                 <th scope="row" class="!bg-transparent border-t border-line pl-5 !text-[13px] !font-medium !text-ink">
                   Faixa {{ indice + 1 }}
                 </th>
-                <td class="w-48">
+                <td>
                   <UiMoneyInput
                     v-model="faixa.limite"
                     :aria-label="`Limite superior da faixa ${indice + 1}`"
                     :invalido="Boolean(leitura.erros[`limite-${indice}`])"
                   />
                 </td>
-                <td class="w-36">
+                <td>
                   <UiMoneyInput
                     v-model="faixa.aliquota"
                     sufixo="%"
@@ -333,7 +341,7 @@ const reducao = REDUCAO_2026
                     :invalido="Boolean(leitura.erros[`aliquota-${indice}`])"
                   />
                 </td>
-                <td class="w-52">
+                <td>
                   <UiMoneyInput
                     v-model="faixa.valorFixo"
                     placeholder="Calcular"
@@ -505,7 +513,8 @@ const reducao = REDUCAO_2026
       </UiPanel>
 
       <UiPanel id="reducao" titulo="Redução do imposto (Lei nº 15.270/2025)" descricao="Aplicada sobre o imposto calculado pela tabela" class="scroll-mt-8">
-        <table class="tabela">
+        <div class="overflow-x-auto">
+        <table class="tabela min-w-[340px]">
           <thead>
             <tr>
               <th scope="col" class="pl-5">Rendimento tributável</th>
@@ -531,6 +540,7 @@ const reducao = REDUCAO_2026
             </tr>
           </tbody>
         </table>
+        </div>
       </UiPanel>
 
       <ParametrosRescisao />

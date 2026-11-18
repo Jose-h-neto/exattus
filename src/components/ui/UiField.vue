@@ -29,11 +29,18 @@ const descricao = computed(() => (props.erro ? `${props.id}-erro` : undefined))
 
 <template>
   <div class="ex-field campo-alinhado">
-    <div class="flex min-w-0 flex-1 items-end gap-1.5">
-      <component :is="grupo ? 'span' : 'label'" :id="grupo ? `${id}-rotulo` : undefined" :for="grupo ? undefined : id" class="ex-label">
-        {{ rotulo }}<span v-if="opcional" class="ex-label__opt">(opcional)</span>
-      </component>
-      <UiInfo v-if="ajuda" :texto="ajuda" :rotulo="`Sobre ${rotulo}`" class="mb-px" />
+    <!--
+      Rotulo + acao (ex.: toggle Valor/Horas). Rotulo e dica ficam sempre juntos (o texto
+      quebra dentro do proprio bloco); so a acao desce para a linha de baixo quando falta
+      espaco (celular).
+    -->
+    <div class="flex min-w-0 flex-1 flex-wrap items-end gap-x-1.5 gap-y-1">
+      <div class="flex min-w-0 flex-[1_1_auto] items-end gap-1.5">
+        <component :is="grupo ? 'span' : 'label'" :id="grupo ? `${id}-rotulo` : undefined" :for="grupo ? undefined : id" class="ex-label">
+          {{ rotulo }}<span v-if="opcional" class="ex-label__opt">(opcional)</span>
+        </component>
+        <UiInfo v-if="ajuda" :texto="ajuda" :rotulo="`Sobre ${rotulo}`" class="mb-px" />
+      </div>
       <div v-if="$slots.acao" class="ml-auto shrink-0"><slot name="acao" /></div>
     </div>
 

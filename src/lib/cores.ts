@@ -124,8 +124,13 @@ function ajustarContraste(cor: Oklch, fundo: string, minimo: number, sentido: 1 
   let atual = { ...cor }
   let hex = oklchParaHex(atual)
 
-  while (contraste(hex, fundo) < minimo && atual.l > 0 && atual.l < 1) {
-    atual = { ...atual, l: atual.l + sentido * 0.005 }
+  // Parte de qualquer luz (inclusive 0 ou 1, preto e branco puros) e para no limite.
+  while (contraste(hex, fundo) < minimo) {
+    const luz = atual.l + sentido * 0.005
+
+    if (luz < 0 || luz > 1) break
+
+    atual = { ...atual, l: luz }
     hex = oklchParaHex(atual)
   }
 
@@ -135,9 +140,16 @@ function ajustarContraste(cor: Oklch, fundo: string, minimo: number, sentido: 1 
 /* Paleta ---------------------------------------------------------------- */
 
 export interface CoresTema {
+  /** Texto e contornos: sempre legivel (4,5:1) sobre a superficie. */
   primary: string
+  /** Preenchimentos (botoes, selecao): a cor escolhida, so ajustada se sumir no fundo. */
+  fill: string
+  /** Hover do preenchimento. */
   hover: string
   soft: string
+  /** Texto do item selecionado no menu (sobre o vidro tingido): o texto um pouco mais forte. */
+  textoForte: string
+  /** Texto sobre o preenchimento: branco ou escuro, o que contrastar mais. */
   on: string
   accent: string
   /** Degrade do fundo (vidro.css): canais "r g b" ou hex. */
@@ -173,22 +185,92 @@ const comLuz = (cor: Oklch, l: number, c = cor.c): string => oklchParaHex({ l: M
 /** Tom frio neutro do canto inferior do fundo, igual em todas as paletas (sky). */
 const FUNDO_FRIO = '134 168 207'
 
+/** Contraste minimo do preenchimento com a superficie: so evita botao invisivel (ex.: branco no branco). */
+const CONTRASTE_PREENCHIMENTO_CLARO = 1.35
+const CONTRASTE_PREENCHIMENTO_ESCURO = 2.5
+
+/** Texto sobre o preenchimento: branco, a tinta do tema ou preto, o primeiro com 4,5:1. */
+const OPCOES_TEXTO = ['#ffffff', '#18152b', '#000000']
+
+function textoSobre(fundo: string): string {
+  return OPCOES_TEXTO.find((cor) => contraste(cor, fundo) >= CONTRASTE_TEXTO) ?? '#000000'
+}
+
+/**
+ * Preenchimento a partir da cor escolhida:
+ * - se sumir na superficie (ex.: branco no branco), ajusta ate aparecer;
+ * - cores medias (vermelho, azul vivo), em que o texto branco quase passa, escurecem
+ *   so o necessario para o texto branco ficar legivel (botao vermelho com texto branco);
+ * - cores claras (amarelo, laranja, ciano) ficam como estao, com texto escuro.
+ */
+function preenchimento(base: string, superficie: string, minimo: number, sentido: 1 | -1): string {
+  const fill = contraste(base, superficie) >= minimo ? base : ajustarContraste(hexParaOklch(base), superficie, minimo, sentido)
+  const branco = contraste('#ffffff', fill)
+
+  return branco >= 3 && branco < CONTRASTE_TEXTO ? ajustarContraste(hexParaOklch(fill), '#ffffff', CONTRASTE_TEXTO, -1) : fill
+}
+
+/** Hover do preenchimento: afasta a cor do texto por cima (escurece sob texto branco, clareia sob texto escuro). */
+function hoverDe(fill: string, on: string): string {
+  const cor = hexParaOklch(fill)
+
+  return comLuz(cor, cor.l + (on === '#ffffff' ? -0.06 : 0.06))
+}
+
+/** Maior saturacao que cabe no sRGB para uma luz e um tom. */
+function saturacaoMaxima(l: number, h: number): number {
+  let minimo = 0
+  let maximo = 0.4
+
+  for (let passo = 0; passo < 20; passo++) {
+    const meio = (minimo + maximo) / 2
+
+    if (dentroDoSrgb(oklchParaLinear({ l, c: meio, h }))) minimo = meio
+    else maximo = meio
+  }
+
+  return minimo
+}
+
+/**
+ * A versao mais viva de um tom (a "cor pura" que o monitor consegue mostrar):
+ * amarelo claro e brilhante, azul mais profundo. E a cor da roda de cores.
+ */
+export function corVivida(tom: number): string {
+  let melhor = { l: 0.6, c: 0 }
+
+  for (let l = 0.42; l <= 0.92; l += 0.01) {
+    const c = saturacaoMaxima(l, tom)
+
+    if (c > melhor.c) melhor = { l, c }
+  }
+
+  return oklchParaHex({ l: melhor.l, c: melhor.c * 0.97, h: tom })
+}
+
 export function gerarPaletaPersonalizada(cor: string): PaletaPersonalizada {
   const base = normalizarHex(cor) ?? '#5a3fc0'
   const escolhida = hexParaOklch(base)
   // Cinzas nao tem tom definido: o destaque acompanha o tom (irrelevante sem saturacao).
   const destaqueTom: Oklch = { l: escolhida.l, c: escolhida.c * 0.6, h: (escolhida.h + 50) % 360 }
 
-  /* Claro: principal com 4,5:1 sobre o branco; se ja tem, fica exatamente a escolhida. */
+  /*
+   * Claro: o preenchimento e a cor escolhida (so escurece se sumir no branco); o texto
+   * usa um tom com 4,5:1 sobre o branco (se a escolhida ja tem, e ela mesma).
+   */
   const primaryClaro = contraste(base, SUPERFICIE_CLARA) >= CONTRASTE_TEXTO ? base : ajustarContraste(escolhida, SUPERFICIE_CLARA, CONTRASTE_TEXTO, -1)
   const claroOklch = hexParaOklch(primaryClaro)
+  const fillClaro = preenchimento(base, SUPERFICIE_CLARA, CONTRASTE_PREENCHIMENTO_CLARO, -1)
+  const onClaro = textoSobre(fillClaro)
   const accentClaro = ajustarContraste({ ...destaqueTom, l: Math.min(escolhida.l, 0.6) }, SUPERFICIE_CLARA, CONTRASTE_DESTAQUE, -1)
 
   const claro: CoresTema = {
     primary: primaryClaro,
-    hover: comLuz(claroOklch, claroOklch.l - 0.07),
+    fill: fillClaro,
+    textoForte: comLuz(claroOklch, claroOklch.l - 0.07),
+    hover: hoverDe(fillClaro, onClaro),
     soft: comLuz(escolhida, 0.95, Math.min(escolhida.c, 0.035)),
-    on: '#ffffff',
+    on: onClaro,
     accent: accentClaro,
     fundo: {
       um: canais(comLuz(escolhida, 0.72, Math.min(escolhida.c, 0.16))),
@@ -201,14 +283,16 @@ export function gerarPaletaPersonalizada(cor: string): PaletaPersonalizada {
     },
   }
 
-  /* Escuro: principal clara sobre a superficie escura; texto do botao escuro no mesmo tom. */
+  /* Escuro: texto claro com 4,5:1 sobre a superficie escura; preenchimento so clareia se sumir no fundo. */
   const primaryEscuro = ajustarContraste({ ...escolhida, l: Math.max(escolhida.l, 0.72) }, SUPERFICIE_ESCURA, CONTRASTE_TEXTO, 1)
-  const escuroOklch = hexParaOklch(primaryEscuro)
-  const onEscuro = ajustarContraste({ l: 0.2, c: Math.min(escolhida.c, 0.05), h: escolhida.h }, primaryEscuro, CONTRASTE_TEXTO, -1)
+  const fillEscuro = preenchimento(base, SUPERFICIE_ESCURA, CONTRASTE_PREENCHIMENTO_ESCURO, 1)
+  const onEscuro = textoSobre(fillEscuro)
 
   const escuro: CoresTema = {
     primary: primaryEscuro,
-    hover: comLuz(escuroOklch, escuroOklch.l + 0.07),
+    fill: fillEscuro,
+    textoForte: comLuz(hexParaOklch(primaryEscuro), hexParaOklch(primaryEscuro).l + 0.07),
+    hover: hoverDe(fillEscuro, onEscuro),
     soft: comLuz(escolhida, 0.28, Math.min(escolhida.c, 0.06)),
     on: onEscuro,
     accent: ajustarContraste({ ...destaqueTom, l: 0.75 }, SUPERFICIE_ESCURA, CONTRASTE_DESTAQUE, 1),
@@ -231,6 +315,8 @@ export function gerarPaletaPersonalizada(cor: string): PaletaPersonalizada {
 function variaveis(tema: CoresTema): string {
   return [
     `--primary: ${tema.primary}`,
+    `--primary-fill: ${tema.fill}`,
+    `--nav-selecao-texto: ${tema.textoForte}`,
     `--primary-hover: ${tema.hover}`,
     `--primary-soft: ${tema.soft}`,
     `--on-primary: ${tema.on}`,
@@ -246,7 +332,7 @@ function variaveis(tema: CoresTema): string {
 }
 
 function miniatura(tema: CoresTema): string {
-  return `--p: ${tema.primary}; --p-soft: ${tema.soft}; --p-on: ${tema.on}; --p-accent: ${tema.accent}`
+  return `--p: ${tema.fill}; --p-soft: ${tema.soft}; --p-on: ${tema.on}; --p-accent: ${tema.accent}`
 }
 
 /**

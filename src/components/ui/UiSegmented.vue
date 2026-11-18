@@ -45,11 +45,12 @@ const id = useId()
         class="flex min-w-0 cursor-pointer items-center justify-center gap-1.5 font-semibold whitespace-nowrap transition-colors has-focus-visible:shadow-(--focus-ring)"
         :class="[
           compacto ? 'gap-1 rounded-[5px] px-2.5 text-xs' : 'rounded-[6px] px-2 text-[13px]',
-          modelo === opcao.valor ? 'bg-primary text-on-primary shadow-xs' : 'text-ink-muted hover:bg-hover hover:text-ink',
+          modelo === opcao.valor ? 'bg-primary-fill text-on-primary shadow-xs' : 'text-ink-muted hover:bg-hover hover:text-ink',
         ]"
       >
         <input v-model="modelo" type="radio" :name="nome" :value="opcao.valor" class="ex-sr" />
-        <UiIcon v-if="opcao.icone" :nome="opcao.icone" :tamanho="compacto ? 14 : 16" class="shrink-0" />
+        <!-- Compacto (no cabecalho de um campo): so o texto, para caber na linha do rotulo. -->
+        <UiIcon v-if="opcao.icone && !compacto" :nome="opcao.icone" :tamanho="16" class="shrink-0" />
         <span class="truncate">{{ opcao.rotulo }}</span>
       </label>
     </div>

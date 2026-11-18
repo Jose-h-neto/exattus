@@ -24,7 +24,7 @@ const abas = [
   { id: 'inss13', rotulo: 'INSS 13º' },
   { id: 'irrf', rotulo: 'IRRF' },
   { id: 'irrf13', rotulo: 'IRRF 13º' },
-  { id: 'tempo', rotulo: 'Tempo de serviço' },
+  { id: 'tempo', rotulo: 'Tempo' },
 ]
 
 const bases = computed(() => {
@@ -88,10 +88,10 @@ const SITUACOES: Record<SituacaoPeriodo, { texto: string; tom: 'neutro' | 'marca
 
     <ResumoValores
       :itens="[
-        { rotulo: 'Proventos', valor: resultado.totalProventos },
+        { rotulo: 'Proventos', valor: resultado.totalProventos, tom: 'positivo' },
         { rotulo: 'Descontos', valor: resultado.totalDescontos, sinal: '-' },
         { rotulo: 'Valor líquido', valor: resultado.liquido, destaque: true },
-        { rotulo: 'FGTS + multa (GRRF)', valor: resultado.fgts.mensal + resultado.fgts.decimo + resultado.fgts.multa },
+        { rotulo: 'FGTS + multa (GRRF)', valor: resultado.fgts.mensal + resultado.fgts.decimo + resultado.fgts.multa, tom: 'encargo' },
       ]"
     />
 
@@ -100,13 +100,14 @@ const SITUACOES: Record<SituacaoPeriodo, { texto: string; tom: 'neutro' | 'marca
     <div class="grid gap-6 2xl:grid-cols-2">
       <UiPanel titulo="Bases tributárias" descricao="INSS e IRRF calculados separadamente sobre a remuneração do mês e sobre o 13º salário.">
         <div class="overflow-x-auto">
-          <table class="tabela min-w-[520px]">
+          <!-- No celular: tributo, base e devido (calculado e ja retido a partir do tablet). -->
+          <table class="tabela">
             <thead>
               <tr>
                 <th scope="col" class="pl-5">Tributo</th>
                 <th scope="col" class="num">Base</th>
-                <th scope="col" class="num">Calculado</th>
-                <th scope="col" class="num">Já retido</th>
+                <th scope="col" class="num hidden sm:table-cell">Calculado</th>
+                <th scope="col" class="num hidden sm:table-cell">Já retido</th>
                 <th scope="col" class="num pr-5">Devido</th>
               </tr>
             </thead>
@@ -119,8 +120,8 @@ const SITUACOES: Record<SituacaoPeriodo, { texto: string; tom: 'neutro' | 'marca
                   </span>
                 </td>
                 <td class="num">{{ formatarMoeda(linha.base) }}</td>
-                <td class="num">{{ formatarMoeda(linha.calculado) }}</td>
-                <td class="num text-muted">{{ formatarMoeda(linha.abatido ?? 0) }}</td>
+                <td class="num hidden sm:table-cell">{{ formatarMoeda(linha.calculado) }}</td>
+                <td class="num hidden text-muted sm:table-cell">{{ formatarMoeda(linha.abatido ?? 0) }}</td>
                 <td class="num pr-5 font-medium text-ink">{{ formatarMoeda(linha.devido) }}</td>
               </tr>
             </tbody>
@@ -164,7 +165,7 @@ const SITUACOES: Record<SituacaoPeriodo, { texto: string; tom: 'neutro' | 'marca
     <section class="vidro rounded-lg">
       <UiTabs v-model="aba" :abas="abas" rotulo="Memória de cálculo">
         <template #default="{ ativa }">
-          <div class="p-5">
+          <div class="p-3 sm:p-5">
             <MemoriaInss v-if="ativa === 'inss'" :resultado="resultado.inssMensal" />
             <MemoriaInss v-else-if="ativa === 'inss13'" :resultado="resultado.inssDecimo" />
             <MemoriaIrrf

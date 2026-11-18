@@ -54,18 +54,18 @@ defineProps<{
             {{ [linha.referencia, linha.detalhe].filter(Boolean).join(' · ') }}
           </p>
         </div>
-        <p class="num shrink-0 font-medium" :class="linha.desconto !== undefined ? 'text-ink-2' : 'text-ink'">
+        <p class="num shrink-0 font-medium" :class="linha.desconto !== undefined ? 'text-(--cor-desconto)' : 'text-(--cor-provento)'">
           <template v-if="linha.desconto !== undefined">− {{ formatarMoeda(linha.desconto) }}</template>
           <template v-else-if="linha.provento !== undefined">{{ formatarMoeda(linha.provento) }}</template>
         </p>
       </li>
       <li class="flex justify-between px-4 py-2.5 text-[13px] text-muted">
-        <span>Proventos <span class="num text-ink-2">{{ formatarMoeda(totalProventos) }}</span></span>
-        <span>Descontos <span class="num text-ink-2">{{ formatarMoeda(totalDescontos) }}</span></span>
+        <span>Proventos <span class="num text-(--cor-provento)">{{ formatarMoeda(totalProventos) }}</span></span>
+        <span>Descontos <span class="num text-(--cor-desconto)">{{ formatarMoeda(totalDescontos) }}</span></span>
       </li>
-      <li class="flex justify-between bg-primary-soft/70 px-4 py-3 text-sm font-semibold text-primary">
-        <span>Valor líquido</span>
-        <span class="num">{{ formatarMoeda(liquido) }}</span>
+      <li class="flex items-baseline justify-between px-4 py-3 font-bold" :class="liquido < 0 ? 'bg-negative-soft text-(--cor-desconto)' : 'bg-(--cor-liquido-fundo) text-(--cor-liquido)'">
+        <span class="text-sm">Valor líquido</span>
+        <span class="num text-xl">{{ formatarMoeda(liquido) }}</span>
       </li>
     </ul>
 
@@ -90,19 +90,20 @@ defineProps<{
               <span v-if="linha.detalhe" class="mt-0.5 block text-xs text-muted">{{ linha.detalhe }}</span>
             </td>
             <td class="num text-muted">{{ linha.referencia ?? '' }}</td>
-            <td class="num">{{ linha.provento === undefined ? '' : formatarMoeda(linha.provento) }}</td>
-            <td class="num pr-5">{{ linha.desconto === undefined ? '' : formatarMoeda(linha.desconto) }}</td>
+            <td class="num text-(--cor-provento)">{{ linha.provento === undefined ? '' : formatarMoeda(linha.provento) }}</td>
+            <td class="num pr-5 text-(--cor-desconto)">{{ linha.desconto === undefined ? '' : formatarMoeda(linha.desconto) }}</td>
           </tr>
         </tbody>
         <tfoot>
           <tr>
             <th scope="row" colspan="2" class="pl-5 text-left">Totais</th>
-            <td class="num">{{ formatarMoeda(totalProventos) }}</td>
-            <td class="num pr-5">{{ formatarMoeda(totalDescontos) }}</td>
+            <td class="num text-(--cor-provento)">{{ formatarMoeda(totalProventos) }}</td>
+            <td class="num pr-5 text-(--cor-desconto)">{{ formatarMoeda(totalDescontos) }}</td>
           </tr>
-          <tr>
-            <th scope="row" colspan="2" class="!bg-primary-soft/70 pl-5 text-left !text-primary">Valor líquido</th>
-            <td colspan="2" class="num !bg-primary-soft/70 pr-5 text-base !text-primary">{{ formatarMoeda(liquido) }}</td>
+          <!-- Liquido: o valor principal (verde; vermelho se negativo), maior que os demais. -->
+          <tr :class="liquido < 0 ? '[&>*]:!bg-negative-soft [&>*]:!text-(--cor-desconto)' : '[&>*]:!bg-(--cor-liquido-fundo) [&>*]:!text-(--cor-liquido)'">
+            <th scope="row" colspan="2" class="pl-5 text-left">Valor líquido</th>
+            <td colspan="2" class="num pr-5 !text-xl">{{ formatarMoeda(liquido) }}</td>
           </tr>
         </tfoot>
       </table>
@@ -118,16 +119,16 @@ defineProps<{
       </div>
     </dl>
 
-    <!-- Encargos do empregador: faixa propria, com o mesmo peso das linhas do demonstrativo. -->
-    <dl v-if="encargos?.length" class="divide-y divide-line border-t border-line bg-info-soft/60">
-      <div v-for="encargo in encargos" :key="encargo.rotulo" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3">
+    <!-- Encargos do empregador (FGTS): informativos, menores que o liquido e em azul. -->
+    <dl v-if="encargos?.length" class="divide-y divide-line border-t border-line bg-info-soft/40">
+      <div v-for="encargo in encargos" :key="encargo.rotulo" class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-2">
         <dt class="min-w-0">
-          <span class="block text-sm font-semibold text-ink">{{ encargo.rotulo }}</span>
-          <span class="mt-0.5 block text-xs text-ink-2">Depósito do empregador · não desconta do líquido</span>
+          <span class="block text-[13px] font-semibold text-ink">{{ encargo.rotulo }}</span>
+          <span class="mt-0.5 block text-xs text-muted">Depósito do empregador · não desconta do líquido</span>
         </dt>
         <dd class="num text-right">
-          <span class="block text-base font-semibold text-ink">{{ formatarMoeda(encargo.valor) }}</span>
-          <span v-if="encargo.detalhe" class="mt-0.5 block text-xs text-ink-2">{{ encargo.detalhe }}</span>
+          <span class="block text-sm font-semibold text-(--cor-encargo)">{{ formatarMoeda(encargo.valor) }}</span>
+          <span v-if="encargo.detalhe" class="mt-0.5 block text-xs text-muted">{{ encargo.detalhe }}</span>
         </dd>
       </div>
     </dl>

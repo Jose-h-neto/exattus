@@ -470,7 +470,7 @@ onBeforeUnmount(() => fechar(false))
                 class="num grid size-9 place-items-center rounded-md text-[13px] transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-30"
                 :class="[
                   dia.selecionado
-                    ? 'bg-primary font-semibold text-on-primary'
+                    ? 'bg-primary-fill font-semibold text-on-primary'
                     : dia.doMes
                       ? 'text-ink hover:bg-subtle'
                       : 'text-ink-subtle hover:bg-subtle',

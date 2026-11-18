@@ -112,7 +112,7 @@ watch(
 <template>
   <a
     href="#conteudo"
-    class="sr-only z-70 rounded-md bg-primary px-3 py-2 text-sm text-on-primary focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+    class="sr-only z-70 rounded-md bg-primary-fill px-3 py-2 text-sm text-on-primary focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
   >
     Pular para o conteúdo
   </a>

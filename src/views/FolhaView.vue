@@ -95,8 +95,8 @@ const rotuloProventos = computed(() =>
 const aba = ref('inss')
 
 const abas = computed(() => [
-  { id: 'inss', rotulo: 'Memória do INSS' },
-  { id: 'irrf', rotulo: 'Memória do IRRF' },
+  { id: 'inss', rotulo: 'INSS' },
+  { id: 'irrf', rotulo: 'IRRF' },
 ])
 
 /** Em horas, uma linha por adicional, como no holerite; em valor, uma linha so. */
@@ -306,7 +306,7 @@ watch(
       aria-label="Dados da folha"
       @submit.prevent
     >
-      <UiFormGroup titulo="Dados do cálculo" descricao="O salário proporcional considera sempre o mês comercial de 30 dias.">
+      <UiFormGroup titulo="Funcionário">
         <UiField id="folha-referencia" rotulo="Funcionário ou referência" opcional class="col-span-2">
           <template #default="{ id }">
             <UiInput :id="id" v-model="form.referencia" placeholder="José, junho/2026" autocomplete="off" />
@@ -315,11 +315,19 @@ watch(
 
         <UiSegmented v-model="form.modalidade" nome="folha-modalidade" rotulo="Vínculo" :opcoes="modalidades" class="col-span-2" />
 
+        <UiField id="folha-dependentes" rotulo="Dependentes (IRRF)" :erro="erros.dependentes">
+          <template #default="{ id, descricao, invalido }">
+            <UiInput :id="id" v-model="form.dependentes" type="number" min="0" max="99" step="1" :invalido="invalido" :aria-describedby="descricao" />
+          </template>
+        </UiField>
+      </UiFormGroup>
+
+      <UiFormGroup titulo="Remuneração" descricao="O salário proporcional considera sempre o mês comercial de 30 dias.">
         <UiSegmented
           v-if="form.modalidade === 'empregado'"
           v-model="form.remuneracao"
           nome="folha-remuneracao"
-          rotulo="Remuneração"
+          rotulo="Tipo"
           :opcoes="remuneracoes"
           class="col-span-2"
         />
@@ -349,91 +357,89 @@ watch(
             </template>
           </UiField>
         </template>
+      </UiFormGroup>
 
-        <template v-if="form.modalidade === 'empregado'">
-          <UiField
-            id="folha-horas-extras"
-            rotulo="Horas extras"
-            :opcional="form.horasExtrasModo === 'valor'"
-            :grupo="form.horasExtrasModo === 'horas'"
-            :ajuda="
-              form.horasExtrasModo === 'valor'
-                ? 'Valor total do mês, somado ao salário. Não é proporcionalizado pelos dias trabalhados.'
-                : 'Base ÷ divisor × horas × (100% + adicional). O arredondamento é feito uma vez em cada linha; se a folha arredondar o valor-hora antes, pode haver diferença de centavos.'
-            "
-            :erro="form.horasExtrasModo === 'valor' ? erros.horasExtras : undefined"
-            class="col-span-2"
-          >
-            <template #acao>
-              <UiSegmented v-model="form.horasExtrasModo" compacto nome="folha-he-modo" rotulo="Informar horas extras em" :opcoes="modosHorasExtras" />
-            </template>
-            <template #default="{ id, descricao, invalido }">
-              <UiMoneyInput
-                v-if="form.horasExtrasModo === 'valor'"
-                :id="id"
-                v-model="form.horasExtras"
-                placeholder="0,00"
-                :invalido="invalido"
-                :aria-describedby="descricao"
-              />
-              <HorasExtrasHoras
-                v-else
-                v-model:linhas="form.horasExtrasLinhas"
-                v-model:base="form.baseValorHora"
-                v-model:divisor="form.divisor"
-                :leitura="leitura.horasExtras"
-                :erro-base="erros.baseValorHora"
-                :erro-divisor="erros.divisor"
-                :rotulado-por="`${id}-rotulo`"
-              />
-            </template>
-          </UiField>
-
-          <UiField
-            id="folha-comissoes"
-            rotulo="Comissões"
-            opcional
-            :grupo="form.comissoesModo === 'separadas'"
-            :ajuda="
-              form.comissoesModo === 'total'
-                ? 'Valor total do mês, somado ao salário. Não é proporcionalizado pelos dias trabalhados.'
-                : 'Lance cada comissão separada (vendas, metas, prêmios). O total é somado aos proventos.'
-            "
-            :erro="form.comissoesModo === 'total' ? erros.comissoes : undefined"
-            class="col-span-2"
-          >
-            <template #acao>
-              <UiSegmented v-model="form.comissoesModo" compacto nome="folha-comissoes-modo" rotulo="Lançar comissões" :opcoes="modosComissoes" />
-            </template>
-            <template #default="{ id, descricao, invalido }">
-              <UiMoneyInput
-                v-if="form.comissoesModo === 'total'"
-                :id="id"
-                v-model="form.comissoes"
-                placeholder="0,00"
-                :invalido="invalido"
-                :aria-describedby="descricao"
-              />
-              <ComissoesSeparadas v-else v-model:linhas="form.comissoesLinhas" :leitura="leitura.comissoes" :rotulado-por="`${id}-rotulo`" />
-            </template>
-          </UiField>
-
-          <UiField
-            id="folha-dsr"
-            rotulo="DSR"
-            opcional
-            ajuda="Descanso semanal remunerado sobre horas extras e comissões, como consta no holerite."
-            :erro="erros.dsr"
-          >
-            <template #default="{ id, descricao, invalido }">
-              <UiMoneyInput :id="id" v-model="form.dsr" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
-            </template>
-          </UiField>
-        </template>
-
-        <UiField id="folha-dependentes" rotulo="Dependentes (IRRF)" :erro="erros.dependentes">
+      <UiFormGroup
+        v-if="form.modalidade === 'empregado'"
+        titulo="Variáveis do mês"
+        descricao="Horas extras, comissões e DSR do mês. Somam aos proventos e não são proporcionalizados pelos dias trabalhados."
+      >
+        <UiField
+          id="folha-horas-extras"
+          rotulo="Horas extras"
+          :opcional="form.horasExtrasModo === 'valor'"
+          :grupo="form.horasExtrasModo === 'horas'"
+          :ajuda="
+            form.horasExtrasModo === 'valor'
+              ? 'Valor total do mês, somado ao salário. Não é proporcionalizado pelos dias trabalhados.'
+              : 'Base ÷ divisor × horas × (100% + adicional). O arredondamento é feito uma vez em cada linha; se a folha arredondar o valor-hora antes, pode haver diferença de centavos.'
+          "
+          :erro="form.horasExtrasModo === 'valor' ? erros.horasExtras : undefined"
+          class="col-span-2"
+        >
+          <template #acao>
+            <UiSegmented v-model="form.horasExtrasModo" compacto nome="folha-he-modo" rotulo="Informar horas extras em" :opcoes="modosHorasExtras" />
+          </template>
           <template #default="{ id, descricao, invalido }">
-            <UiInput :id="id" v-model="form.dependentes" type="number" min="0" max="99" step="1" :invalido="invalido" :aria-describedby="descricao" />
+            <UiMoneyInput
+              v-if="form.horasExtrasModo === 'valor'"
+              :id="id"
+              v-model="form.horasExtras"
+              placeholder="0,00"
+              :invalido="invalido"
+              :aria-describedby="descricao"
+            />
+            <HorasExtrasHoras
+              v-else
+              v-model:linhas="form.horasExtrasLinhas"
+              v-model:base="form.baseValorHora"
+              v-model:divisor="form.divisor"
+              :leitura="leitura.horasExtras"
+              :erro-base="erros.baseValorHora"
+              :erro-divisor="erros.divisor"
+              :rotulado-por="`${id}-rotulo`"
+            />
+          </template>
+        </UiField>
+
+        <UiField
+          id="folha-comissoes"
+          rotulo="Comissões"
+          opcional
+          :grupo="form.comissoesModo === 'separadas'"
+          :ajuda="
+            form.comissoesModo === 'total'
+              ? 'Valor total do mês, somado ao salário. Não é proporcionalizado pelos dias trabalhados.'
+              : 'Lance cada comissão separada (vendas, metas, prêmios). O total é somado aos proventos.'
+          "
+          :erro="form.comissoesModo === 'total' ? erros.comissoes : undefined"
+          class="col-span-2"
+        >
+          <template #acao>
+            <UiSegmented v-model="form.comissoesModo" compacto nome="folha-comissoes-modo" rotulo="Lançar comissões" :opcoes="modosComissoes" />
+          </template>
+          <template #default="{ id, descricao, invalido }">
+            <UiMoneyInput
+              v-if="form.comissoesModo === 'total'"
+              :id="id"
+              v-model="form.comissoes"
+              placeholder="0,00"
+              :invalido="invalido"
+              :aria-describedby="descricao"
+            />
+            <ComissoesSeparadas v-else v-model:linhas="form.comissoesLinhas" :leitura="leitura.comissoes" :rotulado-por="`${id}-rotulo`" />
+          </template>
+        </UiField>
+
+        <UiField
+          id="folha-dsr"
+          rotulo="DSR"
+          opcional
+          ajuda="Descanso semanal remunerado sobre horas extras e comissões, como consta no holerite."
+          :erro="erros.dsr"
+        >
+          <template #default="{ id, descricao, invalido }">
+            <UiMoneyInput :id="id" v-model="form.dsr" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
           </template>
         </UiField>
       </UiFormGroup>
@@ -469,6 +475,7 @@ watch(
 
       <UiFormGroup
         titulo="Ajustes e conferência do holerite"
+        conferencia
         recolhivel
         :aberto="temAjustes"
       >
@@ -516,7 +523,7 @@ watch(
       <template v-else>
         <ResumoValores
           :itens="[
-            { rotulo: rotuloProventos, valor: resultado.totalProventos },
+            { rotulo: rotuloProventos, valor: resultado.totalProventos, tom: 'positivo' },
             { rotulo: 'INSS', valor: resultado.inss.total, sinal: '-' },
             { rotulo: 'IRRF', valor: resultado.irrf.escolhida.irrf, sinal: '-' },
             { rotulo: 'Valor líquido', valor: resultado.liquido, destaque: true },
@@ -553,7 +560,7 @@ watch(
         <section class="vidro rounded-lg">
           <UiTabs v-model="aba" :abas="abas" rotulo="Memória de cálculo">
             <template #default="{ ativa }">
-              <div class="p-5">
+              <div class="p-3 sm:p-5">
                 <MemoriaInss v-if="ativa === 'inss'" :resultado="resultado.inss" />
                 <MemoriaIrrf v-else :irrf="resultado.irrf" :rotulo-rendimento="rotuloProventos" />
               </div>

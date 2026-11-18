@@ -329,7 +329,7 @@ function descricaoUnidade(lancamento: LancamentoEvento): string {
         { titulo: 'Revise e ajuste', texto: 'Altere horas e valores, remova linhas ou inclua lançamentos. Tudo antes de gerar o arquivo.' },
         { titulo: 'Baixe a planilha', texto: 'IT_LANÇAMENTOS FOPAG no layout de upload do sistema da folha, com data no 1º dia da competência.' },
       ]" :key="indice" class="flex gap-3 rounded-md border border-line bg-surface/60 p-3">
-        <span class="num grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-white">{{ indice + 1 }}</span>
+        <span class="num grid size-6 shrink-0 place-items-center rounded-full bg-primary-fill text-xs font-bold text-on-primary">{{ indice + 1 }}</span>
         <span>
           <span class="block font-semibold text-ink">{{ passo.titulo }}</span>
           <span class="text-muted">{{ passo.texto }}</span>

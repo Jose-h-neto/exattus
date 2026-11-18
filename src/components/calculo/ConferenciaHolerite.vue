@@ -18,14 +18,15 @@ function situacao(diferenca: number) {
       <h2 id="titulo-conferencia" class="text-base font-bold text-ink">Conferência do holerite</h2>
     </header>
     <div class="overflow-x-auto">
-      <table class="tabela min-w-[520px]">
+      <!-- No celular a coluna Situacao some: a cor da diferenca ja indica se confere. -->
+      <table class="tabela">
         <thead>
           <tr>
             <th scope="col" class="pl-5">Tributo</th>
             <th scope="col" class="num">Calculado</th>
             <th scope="col" class="num">Informado</th>
             <th scope="col" class="num">Diferença</th>
-            <th scope="col" class="pr-5">Situação</th>
+            <th scope="col" class="hidden pr-5 sm:table-cell">Situação</th>
           </tr>
         </thead>
         <tbody>
@@ -39,7 +40,7 @@ function situacao(diferenca: number) {
             >
               {{ linha.conferencia.diferenca > 0 ? '+' : '' }}{{ formatarMoeda(linha.conferencia.diferenca) }}
             </td>
-            <td class="pr-5">
+            <td class="hidden pr-5 sm:table-cell">
               <UiBadge :tom="situacao(linha.conferencia.diferenca).tom">
                 {{ situacao(linha.conferencia.diferenca).texto }}
               </UiBadge>

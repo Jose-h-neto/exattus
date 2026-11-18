@@ -80,7 +80,7 @@ function pistas(item: ItemConferencia): string[] {
       <UiEmptyState icone="arquivo" titulo="Nenhum valor da folha informado">
         <button
           type="button"
-          class="inline-flex h-9 items-center rounded-md bg-primary px-3.5 text-sm font-medium text-on-primary hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          class="inline-flex h-9 items-center rounded-md bg-primary-fill px-3.5 text-sm font-medium text-on-primary hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           @click="emit('irParaFolha')"
         >
           Informar valores da folha

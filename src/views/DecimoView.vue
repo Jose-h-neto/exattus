@@ -56,8 +56,8 @@ const aba = ref('formulas')
 
 const abas = computed(() => [
   { id: 'formulas', rotulo: 'Fórmulas' },
-  ...(resultado.value?.inss ? [{ id: 'inss', rotulo: 'Memória do INSS' }] : []),
-  ...(resultado.value?.irrf ? [{ id: 'irrf', rotulo: 'Memória do IRRF' }] : []),
+  ...(resultado.value?.inss ? [{ id: 'inss', rotulo: 'INSS' }] : []),
+  ...(resultado.value?.irrf ? [{ id: 'irrf', rotulo: 'IRRF' }] : []),
 ])
 
 // Ao voltar para a 1a parcela, as abas de INSS e IRRF somem.
@@ -306,7 +306,7 @@ watch(
         </UiField>
       </UiFormGroup>
 
-      <UiFormGroup v-if="segunda" titulo="Conferência do holerite" recolhivel :aberto="temConferencia">
+      <UiFormGroup v-if="segunda" titulo="Conferência do holerite" conferencia recolhivel :aberto="temConferencia">
         <UiField id="decimo-inss-informado" rotulo="INSS do holerite" opcional :erro="erros.inssInformado">
           <template #default="{ id, descricao, invalido }">
             <UiMoneyInput :id="id" v-model="form.inssInformado" placeholder="0,00" :invalido="invalido" :aria-describedby="descricao" />
@@ -331,7 +331,7 @@ watch(
           v-if="resultado.entrada.parcela === 'primeira'"
           :itens="[
             { rotulo: '13º integral', valor: resultado.integral },
-            { rotulo: '1ª parcela (50%)', valor: resultado.primeiraParcela, nota: 'Sem INSS e IRRF' },
+            { rotulo: '1ª parcela (50%)', valor: resultado.primeiraParcela, tom: 'positivo', nota: 'Sem INSS e IRRF' },
             { rotulo: 'Valor líquido', valor: resultado.liquido, destaque: true },
             { rotulo: 'FGTS (8%)', valor: resultado.fgts.valor, nota: 'Depósito do empregador · não desconta do líquido' },
           ]"
@@ -339,7 +339,7 @@ watch(
         <ResumoValores
           v-else
           :itens="[
-            { rotulo: '13º integral', valor: resultado.integral },
+            { rotulo: '13º integral', valor: resultado.integral, tom: 'positivo' },
             { rotulo: 'INSS + IRRF', valor: (resultado.inss?.total ?? 0) + (resultado.irrf?.escolhida.irrf ?? 0), sinal: '-' },
             { rotulo: '1ª parcela paga', valor: resultado.adiantamento, sinal: '-' },
             { rotulo: 'Líquido da 2ª parcela', valor: resultado.liquido, destaque: true },
@@ -379,10 +379,10 @@ watch(
         <section class="vidro rounded-lg">
           <UiTabs v-model="aba" :abas="abas" rotulo="Memória de cálculo">
             <template #default="{ ativa }">
-              <div v-if="ativa === 'inss' && resultado.inss" class="p-5">
+              <div v-if="ativa === 'inss' && resultado.inss" class="p-3 sm:p-5">
                 <MemoriaInss :resultado="resultado.inss" />
               </div>
-              <div v-else-if="ativa === 'irrf' && resultado.irrf" class="p-5">
+              <div v-else-if="ativa === 'irrf' && resultado.irrf" class="p-3 sm:p-5">
                 <MemoriaIrrf :irrf="resultado.irrf" rotulo-rendimento="13º salário integral" rotulo-inss="INSS sobre 13º" />
               </div>
               <dl v-else class="divide-y divide-line">

@@ -154,18 +154,19 @@ function atualizar(tipoId: string, valor: string) {
       </div>
 
       <div v-if="tabela" class="overflow-hidden rounded-md border border-line">
-        <table class="w-full text-sm">
+        <!-- table-fixed: no celular as colunas de aulas e valor encolhem e o nome do tipo quebra em linhas. -->
+        <table class="w-full table-fixed text-sm">
           <caption class="sr-only">Aulas do mês por tipo de aula</caption>
           <thead class="bg-subtle text-xs text-muted">
             <tr>
-              <th scope="col" class="px-3 py-2 text-left font-medium">Tipo de aula</th>
-              <th scope="col" class="w-28 px-2 py-2 text-left font-medium">Aulas no mês</th>
-              <th scope="col" class="w-28 px-3 py-2 text-right font-medium">Valor</th>
+              <th scope="col" class="px-2 sm:px-3 py-2 text-left font-medium">Tipo de aula</th>
+              <th scope="col" class="w-[4.5rem] px-2 py-2 text-left font-medium sm:w-28">Aulas no mês</th>
+              <th scope="col" class="w-24 px-2 py-2 text-right font-medium sm:w-28 sm:px-3">Valor</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="tipo in tabela.tipos" :key="tipo.id" class="border-t border-line">
-              <th scope="row" class="px-3 py-1.5 text-left font-normal">
+              <th scope="row" class="px-2 sm:px-3 py-1.5 text-left font-normal">
                 <label :for="`aula-${tipo.id}`" class="block font-medium text-ink">{{ tipo.descricao }}</label>
                 <span class="num text-xs text-muted">{{ formatarMoeda(tipo.valor) }} / aula</span>
               </th>
@@ -184,39 +185,39 @@ function atualizar(tipoId: string, valor: string) {
                   />
                 </div>
               </td>
-              <td class="num px-3 py-1.5 text-right" :class="totalDoTipo(tipo.id) ? 'text-ink' : 'text-muted'">
+              <td class="num px-2 py-1.5 text-right text-[13px] whitespace-nowrap sm:px-3 sm:text-sm" :class="totalDoTipo(tipo.id) ? 'text-ink' : 'text-muted'">
                 {{ totalDoTipo(tipo.id) === null ? '—' : formatarMoeda(totalDoTipo(tipo.id)!) }}
               </td>
             </tr>
           </tbody>
           <tfoot v-if="resultado && resultado.quantidade > 0" class="border-t border-line bg-subtle/60 text-[13px]">
             <tr>
-              <th scope="row" class="px-3 pt-2 text-left font-medium text-ink-2">Total das aulas</th>
+              <th scope="row" class="px-2 sm:px-3 pt-2 text-left font-medium text-ink-2">Total das aulas</th>
               <td class="num px-2 pt-2 text-ink-2">{{ formatarAulas(resultado.quantidade) }}</td>
-              <td class="num px-3 pt-2 text-right">{{ formatarMoeda(resultado.totalAulas) }}</td>
+              <td class="num px-2 sm:px-3 pt-2 text-right">{{ formatarMoeda(resultado.totalAulas) }}</td>
             </tr>
             <tr>
-              <th scope="row" class="px-3 pt-1 text-left font-medium text-ink-2">
+              <th scope="row" class="px-2 sm:px-3 pt-1 text-left font-medium text-ink-2">
                 Hora-atividade
                 <span class="num font-normal text-muted">{{ formatarPercentual(resultado.percentualHoraAtividade) }}</span>
               </th>
               <td />
-              <td class="num px-3 pt-1 text-right">{{ formatarMoeda(resultado.horaAtividade) }}</td>
+              <td class="num px-2 sm:px-3 pt-1 text-right">{{ formatarMoeda(resultado.horaAtividade) }}</td>
             </tr>
             <tr>
-              <th scope="row" class="px-3 pt-1 text-left font-medium text-ink-2">
+              <th scope="row" class="px-2 sm:px-3 pt-1 text-left font-medium text-ink-2">
                 <span class="inline-flex items-center gap-1">
                   DSR <span class="num font-normal text-muted">÷ {{ resultado.divisorDsr }}</span>
                   <UiInfo texto="(Total das aulas + hora-atividade) dividido pelo divisor da instituição." rotulo="Sobre o DSR da hora-aula" />
                 </span>
               </th>
               <td />
-              <td class="num px-3 pt-1 text-right">{{ formatarMoeda(resultado.dsr) }}</td>
+              <td class="num px-2 sm:px-3 pt-1 text-right">{{ formatarMoeda(resultado.dsr) }}</td>
             </tr>
             <tr>
-              <th scope="row" class="px-3 pt-1.5 pb-2 text-left font-bold text-ink">Total hora-aula</th>
+              <th scope="row" class="px-2 sm:px-3 pt-1.5 pb-2 text-left font-bold text-ink">Total hora-aula</th>
               <td />
-              <td class="num px-3 pt-1.5 pb-2 text-right font-bold text-ink">{{ formatarMoeda(resultado.total) }}</td>
+              <td class="num px-2 sm:px-3 pt-1.5 pb-2 text-right font-bold text-ink">{{ formatarMoeda(resultado.total) }}</td>
             </tr>
           </tfoot>
         </table>

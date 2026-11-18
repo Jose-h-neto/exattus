@@ -128,7 +128,7 @@ function exportarCsv() {
         icone="arquivo"
         titulo="Nenhuma conferência salva"
       >
-        <div class="flex justify-center gap-2">
+        <div class="flex flex-wrap justify-center gap-2">
           <RouterLink
             :to="{ name: 'folha' }"
             class="ex-btn ex-btn--secondary"
@@ -149,7 +149,7 @@ function exportarCsv() {
 
     <template v-else>
       <div class="flex flex-col gap-3 border-b border-line px-4 py-3 md:flex-row md:items-center md:justify-between">
-        <div role="radiogroup" aria-label="Filtrar por tipo" class="flex gap-1 overflow-x-auto">
+        <div role="radiogroup" aria-label="Filtrar por tipo" class="flex flex-wrap gap-1">
           <button
             v-for="opcao in filtros"
             :key="opcao.valor"
@@ -178,17 +178,18 @@ function exportarCsv() {
       </div>
 
       <div class="overflow-x-auto">
-        <table class="tabela min-w-[960px]">
+        <!-- Celular: referencia (com o tipo), liquido e abrir; os demais valores aparecem a partir do tablet. -->
+        <table class="tabela lg:min-w-[960px]">
           <thead>
             <tr>
               <th scope="col" class="pl-5">Referência</th>
-              <th scope="col">Tipo</th>
-              <th scope="col" class="num">Bruto</th>
-              <th scope="col" class="num">INSS</th>
-              <th scope="col" class="num">IRRF</th>
+              <th scope="col" class="hidden sm:table-cell">Tipo</th>
+              <th scope="col" class="num hidden md:table-cell">Bruto</th>
+              <th scope="col" class="num hidden md:table-cell">INSS</th>
+              <th scope="col" class="num hidden md:table-cell">IRRF</th>
               <th scope="col" class="num">Líquido</th>
-              <th scope="col">Conferência</th>
-              <th scope="col">Salvo em</th>
+              <th scope="col" class="hidden sm:table-cell">Conferência</th>
+              <th scope="col" class="hidden lg:table-cell">Salvo em</th>
               <th scope="col" class="pr-5"><span class="sr-only">Ações</span></th>
             </tr>
           </thead>
@@ -197,21 +198,22 @@ function exportarCsv() {
               <td class="pl-5">
                 <span class="font-medium text-ink">{{ item.referencia }}</span>
                 <span class="mt-0.5 block text-xs text-muted">{{ item.resumo.detalhe }}</span>
+                <UiBadge class="mt-1 sm:hidden" :tom="item.tipo === 'folha' ? 'marca' : item.tipo === 'rescisao' ? 'atencao' : 'neutro'">{{ rotuloTipo[item.tipo] }}</UiBadge>
               </td>
-              <td class="whitespace-nowrap">
+              <td class="hidden whitespace-nowrap sm:table-cell">
                 <UiBadge :tom="item.tipo === 'folha' ? 'marca' : item.tipo === 'rescisao' ? 'atencao' : 'neutro'">{{ rotuloTipo[item.tipo] }}</UiBadge>
               </td>
-              <td class="num">{{ formatarMoeda(item.resumo.bruto) }}</td>
-              <td class="num">{{ formatarMoeda(item.resumo.inss) }}</td>
-              <td class="num">{{ formatarMoeda(item.resumo.irrf) }}</td>
+              <td class="num hidden md:table-cell">{{ formatarMoeda(item.resumo.bruto) }}</td>
+              <td class="num hidden md:table-cell">{{ formatarMoeda(item.resumo.inss) }}</td>
+              <td class="num hidden md:table-cell">{{ formatarMoeda(item.resumo.irrf) }}</td>
               <td class="num font-medium text-ink">{{ formatarMoeda(item.resumo.liquido) }}</td>
-              <td>
+              <td class="hidden sm:table-cell">
                 <UiBadge v-if="situacao(item)" :tom="situacao(item)!.tom" :title="item.tipo === 'rescisao' ? 'Itens divergentes da folha' : 'Diferença do INSS informado'">
                   {{ situacao(item)!.texto }}
                 </UiBadge>
                 <span v-else class="text-muted">Não conferido</span>
               </td>
-              <td class="num text-left text-muted">{{ formatarDataHora(item.salvoEm) }}</td>
+              <td class="num hidden text-left text-muted lg:table-cell">{{ formatarDataHora(item.salvoEm) }}</td>
               <td class="pr-5">
                 <div class="flex justify-end gap-1">
                   <RouterLink

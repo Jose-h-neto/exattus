@@ -9,8 +9,8 @@ export interface ItemNavegacao {
 
 export interface GrupoNavegacao {
   titulo: string
-  /** Cor que identifica o grupo na barra lateral (token de cor do tema). */
-  cor: 'primary' | 'info' | 'accent' | 'ink-subtle'
+  /** Cor do grupo na barra lateral. So Calculos segue a paleta; as demais areas tem cor fixa (main.css). */
+  cor: 'primary' | 'info' | 'cor-clientes' | 'ink-subtle'
   itens: ItemNavegacao[]
 }
 
@@ -66,7 +66,7 @@ export const NAVEGACAO: GrupoNavegacao[] = [
   },
   {
     titulo: 'Clientes',
-    cor: 'accent',
+    cor: 'cor-clientes',
     itens: [
       {
         rota: 'instituto-terra',

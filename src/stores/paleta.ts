@@ -2,7 +2,7 @@ import { computed, ref, watch } from 'vue'
 
 import { DEFAULT_PALETTE, palettes, type PaletteId } from '@/components/exattus/palettes'
 import { gravarJson, lerJson } from '@/lib/armazenamento'
-import { gerarPaletaPersonalizada, normalizarHex, paraCss } from '@/lib/cores'
+import { corVivida, gerarPaletaPersonalizada, hexParaOklch, normalizarHex, paraCss } from '@/lib/cores'
 
 /*
  * Paleta de destaque (design system "Exattus Temas"): `data-palette` no <html>
@@ -69,8 +69,15 @@ export function usePaleta() {
     paleta,
     paletas: palettes,
     cor,
-    /** A cor principal foi escurecida/clareada para manter a leitura. */
-    ajustada: computed(() => personalizada.value.ajustada),
+
+    /** Tom (0 a 359) da cor personalizada, para a roda de cores. */
+    tomAtual: (): number => hexParaOklch(cor.value).h,
+
+    /** Roda de cores: o tom escolhido, na sua versao mais viva (a cor que aparece no anel). */
+    escolherTom(tom: number) {
+      cor.value = corVivida(tom)
+      paleta.value = 'personalizada'
+    },
 
     /** Define a cor personalizada (hex valido) e ja seleciona a paleta Personalizada. */
     escolherCor(valor: string): boolean {

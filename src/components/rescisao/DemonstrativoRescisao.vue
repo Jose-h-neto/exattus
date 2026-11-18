@@ -49,20 +49,21 @@ function incidencias(rubrica: Rubrica) {
     </header>
 
     <div class="overflow-x-auto">
-      <table class="tabela min-w-[680px]">
+      <!-- Celular: verba, proventos e descontos; referencia e incidencias vao para baixo do nome da verba. -->
+      <table class="tabela">
         <thead>
           <tr>
-            <th scope="col" class="pl-5">Verba</th>
-            <th scope="col">Incidências</th>
-            <th scope="col" class="num">Referência</th>
+            <th scope="col" class="pl-3 sm:pl-5">Verba</th>
+            <th scope="col" class="hidden md:table-cell">Incidências</th>
+            <th scope="col" class="num hidden md:table-cell">Referência</th>
             <th scope="col" class="num">Proventos</th>
-            <th scope="col" class="num pr-5">Descontos</th>
+            <th scope="col" class="num pr-3 sm:pr-5">Descontos</th>
           </tr>
         </thead>
         <tbody>
           <template v-for="rubrica in [...resultado.proventos, ...resultado.descontos]" :key="rubrica.codigo">
             <tr>
-              <td class="pl-5">
+              <td class="pl-3 sm:pl-5">
                 <button
                   type="button"
                   class="-ml-1 flex items-start gap-1.5 rounded-sm px-1 text-left focus-visible:focus-ring"
@@ -78,11 +79,13 @@ function incidencias(rubrica: Rubrica) {
                   />
                   <span>
                     <span class="block font-semibold text-ink">{{ rubrica.descricao }}</span>
-                    <span class="block text-xs text-ink-muted">{{ ROTULOS_NATUREZA[rubrica.natureza] }}</span>
+                    <span class="block text-xs text-ink-muted">
+                      {{ ROTULOS_NATUREZA[rubrica.natureza] }}<span v-if="rubrica.referencia" class="md:hidden"> · {{ rubrica.referencia }}</span>
+                    </span>
                   </span>
                 </button>
               </td>
-              <td>
+              <td class="hidden md:table-cell">
                 <span class="flex gap-1">
                   <span
                     v-for="item in incidencias(rubrica)"
@@ -96,12 +99,12 @@ function incidencias(rubrica: Rubrica) {
                   </span>
                 </span>
               </td>
-              <td class="num text-muted">{{ rubrica.referencia }}</td>
-              <td class="num">{{ rubrica.tipo === 'provento' ? formatarMoeda(rubrica.valor) : '' }}</td>
-              <td class="num pr-5">{{ rubrica.tipo === 'desconto' ? formatarMoeda(rubrica.valor) : '' }}</td>
+              <td class="num hidden text-muted md:table-cell">{{ rubrica.referencia }}</td>
+              <td class="num text-(--cor-provento)">{{ rubrica.tipo === 'provento' ? formatarMoeda(rubrica.valor) : '' }}</td>
+              <td class="num pr-3 sm:pr-5 text-(--cor-desconto)">{{ rubrica.tipo === 'desconto' ? formatarMoeda(rubrica.valor) : '' }}</td>
             </tr>
             <tr v-if="abertas.has(rubrica.codigo)" :id="`memoria-${rubrica.codigo}`">
-              <td colspan="5" class="!border-t-0 bg-sunken/60 !py-2 pr-5 pl-12">
+              <td colspan="5" class="!border-t-0 bg-sunken/60 !py-2 pr-3 sm:pr-5 pl-12">
                 <ol class="list-decimal space-y-0.5 pl-4 text-xs text-ink-2 marker:text-muted">
                   <li v-for="(linha, indice) in rubrica.memoria" :key="indice" class="num">{{ linha }}</li>
                 </ol>
@@ -111,13 +114,16 @@ function incidencias(rubrica: Rubrica) {
         </tbody>
         <tfoot>
           <tr>
-            <th scope="row" colspan="3" class="pl-5 text-left">Totais</th>
-            <td class="num">{{ formatarMoeda(resultado.totalProventos) }}</td>
-            <td class="num pr-5">{{ formatarMoeda(resultado.totalDescontos) }}</td>
+            <th scope="row" colspan="3" class="hidden pl-3 sm:pl-5 text-left md:table-cell">Totais</th>
+            <th scope="row" class="pl-3 sm:pl-5 text-left md:hidden">Totais</th>
+            <td class="num text-(--cor-provento)">{{ formatarMoeda(resultado.totalProventos) }}</td>
+            <td class="num pr-3 sm:pr-5 text-(--cor-desconto)">{{ formatarMoeda(resultado.totalDescontos) }}</td>
           </tr>
-          <tr>
-            <th scope="row" colspan="3" class="!bg-primary-soft/70 pl-5 text-left !text-primary">Valor líquido</th>
-            <td colspan="2" class="num !bg-primary-soft/70 pr-5 text-base !text-primary">{{ formatarMoeda(resultado.liquido) }}</td>
+          <!-- Liquido: verde (vermelho se negativo) e maior que os demais valores. -->
+          <tr :class="resultado.liquido < 0 ? '[&>*]:!bg-negative-soft [&>*]:!text-(--cor-desconto)' : '[&>*]:!bg-(--cor-liquido-fundo) [&>*]:!text-(--cor-liquido)'">
+            <th scope="row" colspan="3" class="hidden pl-3 text-left sm:pl-5 md:table-cell">Valor líquido</th>
+            <th scope="row" class="pl-3 text-left sm:pl-5 md:hidden">Valor líquido</th>
+            <td colspan="2" class="num pr-3 !text-xl sm:pr-5">{{ formatarMoeda(resultado.liquido) }}</td>
           </tr>
         </tfoot>
       </table>

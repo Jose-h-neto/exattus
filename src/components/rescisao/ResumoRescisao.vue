@@ -59,9 +59,9 @@ const linhas = computed(() => {
           <dd class="num text-right text-ink">{{ linha.valor }}</dd>
         </div>
       </dl>
-      <dl class="border-t border-line bg-primary-soft/70 px-5 py-3">
-        <dt class="text-xs text-muted">Valor líquido</dt>
-        <dd class="num text-xl font-semibold tracking-tight text-primary">{{ formatarMoeda(resultado.liquido) }}</dd>
+      <dl class="border-t border-line px-5 py-3" :class="resultado.liquido < 0 ? 'bg-negative-soft' : 'bg-(--cor-liquido-fundo)'">
+        <dt class="text-xs font-semibold text-ink">Valor líquido</dt>
+        <dd class="num text-2xl font-bold tracking-tight" :class="resultado.liquido < 0 ? 'text-(--cor-desconto)' : 'text-(--cor-liquido)'">{{ formatarMoeda(resultado.liquido) }}</dd>
       </dl>
       <dl v-if="folhaInformada && conferenciaRescisao" class="flex justify-between gap-3 border-t border-line px-5 py-2.5 text-[13px]">
         <dt class="text-muted">Divergências</dt>

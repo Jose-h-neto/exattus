@@ -91,8 +91,8 @@ const textoPeriodo = computed(() => {
 const aba = ref('inss')
 
 const abas = computed(() => [
-  { id: 'inss', rotulo: 'INSS por competência', contador: resultado.value?.competencias.length },
-  { id: 'irrf', rotulo: 'Memória do IRRF' },
+  { id: 'inss', rotulo: 'INSS', contador: resultado.value?.competencias.length },
+  { id: 'irrf', rotulo: 'IRRF' },
   { id: 'formulas', rotulo: 'Fórmulas' },
 ])
 
@@ -394,6 +394,7 @@ watch(
 
       <UiFormGroup
         titulo="Conferência avançada"
+        conferencia
         recolhivel
         :aberto="Boolean(form.inssManual)"
       >
@@ -430,7 +431,7 @@ watch(
       <template v-else>
         <ResumoValores
           :itens="[
-            { rotulo: 'Total bruto', valor: resultado.totalBruto },
+            { rotulo: 'Total bruto', valor: resultado.totalBruto, tom: 'positivo' },
             { rotulo: 'INSS', valor: resultado.inssUsado, sinal: '-' },
             { rotulo: 'IRRF', valor: resultado.irrf.escolhida.irrf, sinal: '-' },
             { rotulo: 'Valor líquido', valor: resultado.liquido, destaque: true },
@@ -462,23 +463,29 @@ watch(
             <p class="text-xs text-muted">Férias + 1/3 rateados pelos dias de gozo de cada mês</p>
           </header>
           <div class="overflow-x-auto">
-            <table class="tabela min-w-[480px]">
+            <!-- Celular: dias e tabela do INSS vao para baixo da competencia. -->
+            <table class="tabela">
               <thead>
                 <tr>
                   <th scope="col" class="pl-5">Competência</th>
-                  <th scope="col" class="num">Dias</th>
+                  <th scope="col" class="num hidden sm:table-cell">Dias</th>
                   <th scope="col" class="num">Valor bruto</th>
                   <th scope="col" class="num">INSS</th>
-                  <th scope="col" class="pr-5">Tabela do INSS</th>
+                  <th scope="col" class="hidden pr-5 sm:table-cell">Tabela do INSS</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="item in resultado.competencias" :key="item.chave">
-                  <td class="pl-5 font-medium whitespace-nowrap text-ink">{{ nomeCompetencia(item.chave) }}</td>
-                  <td class="num">{{ item.dias }}</td>
+                  <td class="pl-5 text-ink">
+                    <span class="block font-medium whitespace-nowrap">{{ nomeCompetencia(item.chave) }}</span>
+                    <span class="block text-xs text-muted sm:hidden">
+                      {{ item.dias }} {{ item.dias === 1 ? 'dia' : 'dias' }} · tabela {{ item.anoTabela }}<UiBadge v-if="item.provisoria" tom="atencao" class="ml-1">provisória</UiBadge>
+                    </span>
+                  </td>
+                  <td class="num hidden sm:table-cell">{{ item.dias }}</td>
                   <td class="num">{{ formatarMoeda(item.base) }}</td>
                   <td class="num">{{ formatarMoeda(item.inss.total) }}</td>
-                  <td class="pr-5 whitespace-nowrap">
+                  <td class="hidden pr-5 whitespace-nowrap sm:table-cell">
                     {{ item.anoTabela }}
                     <UiBadge v-if="item.provisoria" tom="atencao" class="ml-1">provisória</UiBadge>
                   </td>
@@ -487,10 +494,10 @@ watch(
               <tfoot>
                 <tr>
                   <th scope="row" class="pl-5 text-left">Total</th>
-                  <td class="num">{{ totaisCompetencias.dias }}</td>
+                  <td class="num hidden sm:table-cell">{{ totaisCompetencias.dias }}</td>
                   <td class="num">{{ formatarMoeda(totaisCompetencias.base) }}</td>
                   <td class="num">{{ formatarMoeda(resultado.inssEstimado) }}</td>
-                  <td class="pr-5" />
+                  <td class="hidden pr-5 sm:table-cell" />
                 </tr>
               </tfoot>
             </table>
@@ -518,9 +525,10 @@ watch(
         <section class="vidro rounded-lg">
           <UiTabs v-model="aba" :abas="abas" rotulo="Memória de cálculo">
             <template #default="{ ativa }">
-              <div v-if="ativa === 'inss'" class="space-y-4 p-5">
-                <div class="overflow-x-auto rounded-md border border-line">
-                  <table class="tabela min-w-[600px] [&_td]:px-3 [&_th]:px-3">
+              <div v-if="ativa === 'inss'" class="space-y-4 p-3 sm:p-5">
+                <div class="overflow-x-auto rounded-[4px] border border-line sm:rounded-md">
+                  <!-- Dias sob a competencia e medias sob as ferias: cabe sem rolagem lateral. No celular, so base e INSS. -->
+                  <table class="tabela">
                     <caption class="sr-only">INSS das férias por competência</caption>
                     <thead>
                       <tr>
@@ -530,37 +538,40 @@ watch(
                             <UiInfo texto="O valor tributável das férias, incluindo o 1/3, é distribuído conforme os dias gozados em cada mês, e o INSS é calculado separadamente por competência." />
                           </span>
                         </th>
-                        <th scope="col" class="num">Dias</th>
-                        <th scope="col" class="num">Salário</th>
-                        <th scope="col" class="num">Médias</th>
-                        <th scope="col" class="num">1/3</th>
+                        <th scope="col" class="num hidden sm:table-cell">Férias</th>
+                        <th scope="col" class="num hidden sm:table-cell">1/3</th>
                         <th scope="col" class="num">Base INSS</th>
                         <th scope="col" class="num">INSS</th>
                       </tr>
                     </thead>
                     <tbody>
                       <tr v-for="item in resultado.competencias" :key="item.chave">
-                        <td class="font-medium whitespace-nowrap text-ink">
-                          {{ nomeCompetencia(item.chave) }}
-                          <UiBadge v-if="item.provisoria" tom="atencao" class="ml-1" :title="`Tabela de ${item.anoTabela} usada por falta da tabela do ano`">
-                            provisória
-                          </UiBadge>
+                        <td class="text-ink">
+                          <span class="block font-medium whitespace-nowrap">
+                            {{ nomeCompetencia(item.chave) }}
+                            <UiBadge v-if="item.provisoria" tom="atencao" class="ml-1" :title="`Tabela de ${item.anoTabela} usada por falta da tabela do ano`">
+                              provisória
+                            </UiBadge>
+                          </span>
+                          <span class="block text-xs text-muted">{{ item.dias }} {{ item.dias === 1 ? 'dia' : 'dias' }}</span>
                         </td>
-                        <td class="num">{{ item.dias }}</td>
-                        <td class="num">{{ formatarMoeda(item.salario) }}</td>
-                        <td class="num">{{ formatarMoeda(item.medias) }}</td>
-                        <td class="num">{{ formatarMoeda(item.terco) }}</td>
+                        <td class="num hidden sm:table-cell">
+                          {{ formatarMoeda(item.salario + item.medias) }}
+                          <span v-if="item.medias" class="block text-xs text-muted">médias {{ formatarMoeda(item.medias) }}</span>
+                        </td>
+                        <td class="num hidden sm:table-cell">{{ formatarMoeda(item.terco) }}</td>
                         <td class="num">{{ formatarMoeda(item.base) }}</td>
                         <td class="num font-medium text-ink">{{ formatarMoeda(item.inss.total) }}</td>
                       </tr>
                     </tbody>
                     <tfoot>
                       <tr>
-                        <th scope="row" class="text-left">Total estimado</th>
-                        <td class="num">{{ totaisCompetencias.dias }}</td>
-                        <td class="num">{{ formatarMoeda(totaisCompetencias.salario) }}</td>
-                        <td class="num">{{ formatarMoeda(totaisCompetencias.medias) }}</td>
-                        <td class="num">{{ formatarMoeda(totaisCompetencias.terco) }}</td>
+                        <th scope="row" class="text-left">
+                          Total estimado
+                          <span class="block text-xs font-normal text-muted">{{ totaisCompetencias.dias }} dias</span>
+                        </th>
+                        <td class="num hidden sm:table-cell">{{ formatarMoeda(totaisCompetencias.salario + totaisCompetencias.medias) }}</td>
+                        <td class="num hidden sm:table-cell">{{ formatarMoeda(totaisCompetencias.terco) }}</td>
                         <td class="num">{{ formatarMoeda(totaisCompetencias.base) }}</td>
                         <td class="num">{{ formatarMoeda(resultado.inssEstimado) }}</td>
                       </tr>
@@ -571,7 +582,7 @@ watch(
                 <details
                   v-for="item in resultado.competencias"
                   :key="`faixas-${item.chave}`"
-                  class="group rounded-md border border-line"
+                  class="group rounded-[4px] border border-line sm:rounded-md"
                 >
                   <summary
                     class="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[13px] font-medium text-ink-2 hover:bg-subtle focus-visible:outline-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden"
@@ -582,13 +593,13 @@ watch(
                     </span>
                     <span class="num text-muted">{{ formatarMoeda(item.inss.total) }}</span>
                   </summary>
-                  <div class="border-t border-line p-4">
+                  <div class="border-t border-line p-3 sm:p-4">
                     <MemoriaInss :resultado="item.inss" />
                   </div>
                 </details>
               </div>
 
-              <div v-else-if="ativa === 'irrf'" class="p-5">
+              <div v-else-if="ativa === 'irrf'" class="p-3 sm:p-5">
                 <MemoriaIrrf
                   :irrf="resultado.irrf"
                   rotulo-rendimento="Rendimento tributável das férias"

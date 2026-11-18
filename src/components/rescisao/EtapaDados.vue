@@ -211,9 +211,10 @@ function aoMudarDesligamento() {
       </UiField>
     </UiFormGroup>
 
-    <div role="group" aria-labelledby="resc-titulo-ferias" class="border-t border-line px-5 py-4">
-      <div class="mb-3 flex items-center gap-1.5">
-        <h3 id="resc-titulo-ferias" class="text-sm font-bold text-ink">Histórico de férias</h3>
+    <div role="group" aria-labelledby="resc-titulo-ferias" class="fieldset grupo-form pb-3">
+      <div class="mb-3 flex items-center gap-2">
+        <span class="grupo-form__marca" aria-hidden="true" />
+        <h3 id="resc-titulo-ferias" class="grupo-form__titulo">Histórico de férias</h3>
         <UiInfo
           texto="Períodos aquisitivos completos até o desligamento. Marque os que já foram gozados. As faltas injustificadas reduzem os dias de direito (CLT, art. 130)."
         />

@@ -35,6 +35,7 @@
   --color-ink-subtle: var(--ink-subtle);
 
   --color-primary: var(--primary);
+  --color-primary-fill: var(--primary-fill);
   --color-primary-hover: var(--primary-hover);
   --color-primary-soft: var(--primary-soft);
   --color-on-primary: var(--on-primary);
@@ -59,6 +60,32 @@
   --color-scrim: var(--scrim);
 
   --shadow-xl: var(--shadow-lg);
+}
+
+/*
+ * Cor principal em dois papeis:
+ * - --primary: texto e contornos (links, item ativo, foco), sempre legivel sobre a superficie;
+ * - --primary-fill: preenchimentos (botoes, selecao, interruptores, selos), com --on-primary por cima.
+ * Nas paletas fixas sao a mesma cor. Na personalizada o preenchimento usa a cor exata escolhida
+ * (ex.: amarelo vivo com texto escuro) e o texto, um tom ajustado para leitura.
+ */
+:root {
+  --primary-fill: var(--primary);
+}
+
+.ex-btn--primary,
+.ex-check__input:checked + .ex-check__box,
+.ex-check__input:indeterminate + .ex-check__box,
+.ex-switch[aria-checked="true"],
+.ex-progress__bar,
+.ex-tabs--line .ex-tab[aria-selected="true"]::after,
+.ex-nav-item__badge {
+  background: var(--primary-fill);
+}
+
+.ex-check__input:checked + .ex-check__box,
+.ex-check__input:indeterminate + .ex-check__box {
+  border-color: var(--primary-fill);
 }
 
 /*
@@ -91,12 +118,13 @@
     font-variant-numeric: tabular-nums;
   }
 
+  /* Celulas compactas: menos rolagem lateral e vertical nas tabelas de memoria e conferencia. */
   .tabela th {
-    @apply bg-sunken/55 px-4 py-2.5 text-left text-xs font-semibold whitespace-nowrap text-ink-muted;
+    @apply bg-sunken/55 px-3 py-2 text-left text-xs font-semibold whitespace-nowrap text-ink-muted;
   }
 
   .tabela td {
-    @apply border-t border-line px-4 py-3 align-top text-ink;
+    @apply border-t border-line px-3 py-2.5 align-top text-ink;
   }
 
   .tabela tbody tr:hover > td {
@@ -232,4 +260,89 @@
 
 .abas-linha .ex-tab:focus-visible {
   outline-offset: -4px;
+}
+
+/*
+ * Cabecalho dos grupos de campos (UiFormGroup e secoes montadas a parte, como o
+ * historico de ferias): barra na cor principal + titulo em negrito e caixa alta,
+ * no mesmo padrao dos grupos da barra lateral.
+ */
+.grupo-form__marca {
+  width: 3px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+  background: var(--primary);
+}
+
+.grupo-form__titulo {
+  font: 800 12px/16px var(--font-sans);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink);
+}
+
+/*
+ * Grupo de campos como "formulario dentro do formulario": cada grupo e uma caixa
+ * propria (borda + fundo um pouco mais solido que o vidro do cartao). O espaco
+ * entre caixas substitui as linhas divisorias.
+ *
+ * Cantos concentricos (borda dentro de borda): o raio de dentro e o raio de fora
+ * menos o espaco entre as duas bordas. Cartao 16px - respiro 10px = caixa 6px;
+ * dentro da caixa, a area clicavel do grupo recolhivel
+ * (6px para dentro) fica quase reta (2px).
+ */
+@layer components {
+  .fieldset {
+    --fieldset-margem: 10px;
+
+    margin: var(--fieldset-margem) var(--fieldset-margem) 0;
+    padding: 12px 14px 0;
+    border: 1px solid var(--line);
+    border-radius: calc(var(--radius-lg) - var(--fieldset-margem));
+    background: color-mix(in srgb, var(--surface) 72%, transparent);
+  }
+
+  .fieldset:last-child {
+    margin-bottom: var(--fieldset-margem);
+  }
+}
+
+/*
+ * Cores fixas por funcao (nao mudam com a paleta), seguindo convencoes universais:
+ * entrada de dinheiro (proventos, liquido) em verde, saida (descontos, valores
+ * negativos) em vermelho, encargo do empregador (FGTS) em azul informativo. Usam
+ * os tokens de status do design system, que ja tem versao para o tema escuro.
+ *
+ * Os grupos de conferencia
+ * guardam valores do holerite do cliente para comparar com o calculo. Mesma cor
+ * de "valores da folha para conferir" da planilha de lote.
+ */
+:root {
+  --cor-conferencia: #b03a76;
+  --cor-provento: var(--success);
+  --cor-liquido: var(--success);
+  --cor-liquido-fundo: var(--success-soft);
+  --cor-desconto: var(--danger);
+  --cor-encargo: var(--info);
+  --cor-clientes: #0f7a68;
+}
+
+[data-theme="dark"] {
+  --cor-conferencia: #e58bbd;
+  --cor-clientes: #5fd3b8;
+}
+
+.fieldset--conferencia {
+  border-color: color-mix(in srgb, var(--cor-conferencia) 28%, var(--line));
+  background: color-mix(in srgb, var(--cor-conferencia) 5%, color-mix(in srgb, var(--surface) 72%, transparent));
+}
+
+.fieldset--conferencia .grupo-form__marca {
+  background: var(--cor-conferencia);
+}
+
+/* Formularios compactos: rotulo mais perto do campo. */
+.ex-field {
+  gap: 4px;
 }

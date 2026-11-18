@@ -40,11 +40,11 @@ function irParaResultado() {
     >
       <div class="leading-tight">
         <p class="text-xs text-muted">Valor líquido</p>
-        <p class="num text-lg font-semibold text-primary">{{ formatarMoeda(liquido) }}</p>
+        <p class="num text-lg font-bold" :class="liquido < 0 ? 'text-(--cor-desconto)' : 'text-(--cor-liquido)'">{{ formatarMoeda(liquido) }}</p>
       </div>
       <button
         type="button"
-        class="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary px-3.5 text-sm font-medium text-on-primary hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        class="inline-flex h-9 items-center gap-1.5 rounded-md bg-primary-fill px-3.5 text-sm font-medium text-on-primary hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         @click="irParaResultado"
       >
         Ver demonstrativo

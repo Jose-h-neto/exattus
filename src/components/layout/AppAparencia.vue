@@ -3,9 +3,9 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import ExThemePicker from '@/components/exattus/ExThemePicker.vue'
 import UiIcon, { type NomeIcone } from '@/components/ui/UiIcon.vue'
-import UiInfo from '@/components/ui/UiInfo.vue'
 import UiSegmented from '@/components/ui/UiSegmented.vue'
 import { usePaleta } from '@/stores/paleta'
+import RodaDeCor from './RodaDeCor.vue'
 import { useTema, type Tema } from '@/stores/tema'
 
 /**
@@ -15,15 +15,32 @@ import { useTema, type Tema } from '@/stores/tema'
  */
 const emit = defineEmits<{ aberto: [valor: boolean] }>()
 
-const { paleta, paletas, cor, ajustada, escolherCor } = usePaleta()
+const { paleta, paletas, cor, escolherCor, escolherTom, tomAtual } = usePaleta()
 
-/* Hex digitado: aplica ao confirmar (Enter ou sair do campo); acompanha o seletor nativo. */
+/*
+ * Roda de cores: aparece com a paleta Personalizada selecionada. O tom fica num
+ * estado proprio para o marcador nao "pular" com o arredondamento da cor.
+ */
+const tom = ref(tomAtual())
+let mudouPelaRoda = false
+
+function aoGirar(valor: number) {
+  tom.value = valor
+  mudouPelaRoda = true
+  escolherTom(valor)
+}
+
+/* Codigo da cor (escondido por padrao): aplica ao confirmar (Enter ou sair do campo). */
 const hexDigitado = ref(cor.value)
 const hexInvalido = ref(false)
 
 watch(cor, (valor) => {
   hexDigitado.value = valor
   hexInvalido.value = false
+
+  if (!mudouPelaRoda) tom.value = tomAtual()
+
+  mudouPelaRoda = false
 })
 
 function aplicarHex() {
@@ -38,7 +55,7 @@ const modos: { valor: Tema; rotulo: string; icone: NomeIcone }[] = [
   { valor: 'dark', rotulo: 'Escuro', icone: 'lua' },
 ]
 
-/** Nome da paleta na dica do botao do rodape (a bolinha ao lado ja mostra a cor). */
+/** Nome da paleta: na dica do botao do rodape e ao lado do titulo "Cor" no painel. */
 const nomePaleta = computed(() => paletas.find((item) => item.id === paleta.value)?.label ?? '')
 
 const aberto = ref(false)
@@ -127,7 +144,7 @@ onBeforeUnmount(() => fechar(false))
     <UiIcon nome="paleta" :tamanho="20" />
     <span class="ex-nav-item__label min-w-0 truncate">Aparência</span>
     <span class="ex-sr">: {{ nomePaleta }}</span>
-    <span class="size-3 shrink-0 rounded-full bg-primary ring-2 ring-primary-soft" aria-hidden="true" />
+    <span class="size-3 shrink-0 rounded-full bg-primary-fill ring-2 ring-primary-soft" aria-hidden="true" />
   </button>
 
   <Teleport to="body">
@@ -156,54 +173,34 @@ onBeforeUnmount(() => fechar(false))
 
         <UiSegmented v-model="modoTema" nome="aparencia-modo" rotulo="Modo" :opcoes="modos" />
 
-        <div class="mb-1.5 flex items-center gap-1.5">
-          <span class="ex-label">Cor de destaque</span>
-          <UiInfo
-            texto="Troca a cor dos botões, da navegação e das seleções, só neste navegador. Fundos, textos e cores de status continuam iguais."
-            rotulo="Sobre a cor de destaque"
-          />
+        <div class="mb-2 flex items-baseline justify-between gap-2">
+          <span class="ex-label">Cor</span>
+          <span class="text-xs text-muted">{{ nomePaleta }}</span>
         </div>
-        <ExThemePicker v-model="paleta" label="Cor de destaque" compact />
+        <ExThemePicker v-model="paleta" label="Cor" compact />
 
-        <!-- Cor personalizada: seletor nativo + hex digitado. Escolher ja seleciona a paleta Personalizada. -->
-        <div class="mt-3 border-t border-line pt-3">
-          <label for="aparencia-cor-hex" class="ex-label">Cor personalizada</label>
-          <div class="mt-1.5 flex items-center gap-2">
-            <label
-              class="relative size-9 shrink-0 cursor-pointer overflow-hidden rounded-md border border-line-strong focus-within:ring-3 focus-within:ring-primary-soft"
-              :style="{ background: cor }"
-              title="Escolher a cor"
-            >
-              <input
-                type="color"
-                class="absolute inset-0 size-full cursor-pointer opacity-0"
-                :value="cor"
-                aria-label="Escolher a cor personalizada"
-                @input="escolherCor(($event.target as HTMLInputElement).value)"
-              />
-            </label>
+        <!-- Personalizada: roda de cores. O codigo da cor fica escondido, para quem precisa da cor exata. -->
+        <div v-if="paleta === 'personalizada'" class="mt-4 flex flex-col items-center gap-2.5 border-t border-line pt-4">
+          <RodaDeCor :model-value="tom" rotulo="Escolher a cor" :tamanho="136" @update:model-value="aoGirar" />
+
+          <details class="w-full text-xs">
+            <summary class="cursor-pointer text-center text-muted hover:text-ink">Usar código da cor</summary>
             <input
-              id="aparencia-cor-hex"
               v-model="hexDigitado"
               type="text"
-              inputmode="text"
               maxlength="7"
               spellcheck="false"
               autocomplete="off"
+              aria-label="Código da cor"
               placeholder="#5a3fc0"
-              class="h-9 min-w-0 flex-1 rounded-md border bg-surface px-3 font-mono text-sm uppercase outline-none focus:border-primary focus:ring-3 focus:ring-primary-soft"
+              class="mt-2 h-9 w-full rounded-md border bg-surface px-3 font-mono text-sm uppercase outline-none focus:border-primary focus:ring-3 focus:ring-primary-soft"
               :class="hexInvalido ? 'border-danger' : 'border-line-strong'"
               :aria-invalid="hexInvalido"
-              aria-describedby="aparencia-cor-nota"
               @change="aplicarHex"
               @keydown.enter.prevent="aplicarHex"
             />
-          </div>
-          <p id="aparencia-cor-nota" class="mt-1.5 text-xs" :class="hexInvalido ? 'text-danger' : 'text-muted'">
-            <template v-if="hexInvalido">Use o formato #RRGGBB, ex.: #0B6A80.</template>
-            <template v-else-if="paleta === 'personalizada' && ajustada">Tom ajustado para manter a leitura dos textos e botões.</template>
-            <template v-else>Os tons claros, o modo escuro e o fundo são gerados a partir dela.</template>
-          </p>
+            <p v-if="hexInvalido" class="mt-1 text-danger">Use o formato #RRGGBB, ex.: #0B6A80.</p>
+          </details>
         </div>
       </div>
     </Transition>
